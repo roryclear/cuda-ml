@@ -1,5 +1,5 @@
 import pycuda.compiler as comp
-import pycuda.driver as drv
+import pycuda.driver as cuda
 import numpy
 import pycuda.autoinit
 
@@ -23,6 +23,10 @@ a = numpy.random.randn(400).astype(numpy.float32)
 b = numpy.random.randn(400).astype(numpy.float32)
 
 dest = numpy.zeros_like(a)
-multiply_them(drv.Out(dest), drv.In(a), drv.In(b), block=(400, 1, 1))
+multiply_them(cuda.Out(dest), cuda.In(a), cuda.In(b), block=(400, 1, 1))
 
 print(dest - a * b)
+
+cuda.init()
+num = cuda.Device.count()
+print("num = ",num)
