@@ -27,8 +27,13 @@ dest = numpy.zeros_like(a)
 
 start_time = time.time()
 for i in range(100000):
-  add_them(cuda.Out(dest), cuda.In(a), cuda.In(b), block=(1000, 1, 1))
+  add_them(cuda.Out(a), cuda.In(a), cuda.In(b), block=(1000, 1, 1))
 print("--- %s seconds ---" % (time.time() - start_time))
+
+print(a[0])
+
+a=numpy.empty(1000).astype(numpy.float32); a.fill(1)
+b=numpy.empty(1000).astype(numpy.float32); b.fill(1)
 
 a_gpu = cuda.mem_alloc(a.nbytes)
 cuda.memcpy_htod(a_gpu, a)
@@ -42,10 +47,12 @@ cuda.memcpy_htod(d_gpu, d)
 
 start_time = time.time()
 for i in range(10000):
-  add_them(d_gpu, a_gpu, b_gpu, block=(1000, 1, 1))
+  add_them(a_gpu, a_gpu, b_gpu, block=(1000, 1, 1))
 print("--- %s seconds ---" % (time.time() - start_time))
 
-cuda.memcpy_dtoh(d, d_gpu)
+cuda.memcpy_dtoh(d, a_gpu)
+
+print(d[0])
 
 cuda.init()
 num = cuda.Device.count()
