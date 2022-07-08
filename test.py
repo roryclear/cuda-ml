@@ -12,7 +12,7 @@ class Net():
     #This defines the structure of the NN.
     def __init__(self):
         super(Net, self).__init__()
-        self.weights = [[]]
+        self.weights = [[[]]]
         
     def forward(self, input):
         return 0
