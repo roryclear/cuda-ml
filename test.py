@@ -18,6 +18,13 @@ __global__ void add_them(float *dest, float *a, float *b)
   const int i = threadIdx.x;
   dest[i] = a[i] + b[i];
 }
+
+__global__ void relu(float *a)
+{
+  if(a < 0) {
+    a = 0;
+  }
+}
 """
 )
 
@@ -25,6 +32,7 @@ add_them = mod.get_function("add_them")
 
 a=numpy.empty(1000).astype(numpy.float32); a.fill(1)
 b=numpy.empty(1000).astype(numpy.float32); b.fill(1)
+
 
 dest = numpy.zeros_like(a)
 
