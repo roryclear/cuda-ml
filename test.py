@@ -8,6 +8,15 @@ from tensorflow import keras
 #pip install pycuda
 #pip install tensorflow
 
+class Net():
+    #This defines the structure of the NN.
+    def __init__(self):
+        super(Net, self).__init__()
+        self.weights = [[]]
+        
+    def forward(self, input):
+        return 0
+
 print("ffs")
 (img_train, label_train), (img_test, label_test) = keras.datasets.mnist.load_data()
 
@@ -22,7 +31,7 @@ __global__ void add_them(float *dest, float *a, float *b)
 __global__ void relu(float *a)
 {
   const int i = threadIdx.x;
-  if(a[i] < 0)
+  if(a[i] < 0) 
   {
     a[i] = 0;
   }
@@ -38,7 +47,7 @@ b=numpy.empty(1000).astype(numpy.float32); b.fill(1)
 w1=numpy.empty((4,784)).astype(numpy.float32); w1.fill(1)
 print("w1 = ",w1)
 f = open("relu-weights784-4-10.txt", "r")
-lines = f.readlines()[1:]
+lines = f.readlines()[1:785]
 for line in lines:
   line = line.replace("\n","")
   array = line.split(",")
@@ -76,5 +85,3 @@ cuda.memcpy_dtoh(d, a_gpu)
 print(d[0])
 
 cuda.init()
-num = cuda.Device.count()
-print("num = ",num)
