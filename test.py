@@ -35,6 +35,14 @@ add_them = mod.get_function("add_them")
 a=numpy.empty(1000).astype(numpy.float32); a.fill(1)
 b=numpy.empty(1000).astype(numpy.float32); b.fill(1)
 
+w1=numpy.empty((4,784)).astype(numpy.float32); w1.fill(1)
+print("w1 = ",w1)
+f = open("relu-weights784-4-10.txt", "r")
+lines = f.readlines()[1:]
+for line in lines:
+  line = line.replace("\n","")
+  array = line.split(",")
+  print(array)
 
 dest = numpy.zeros_like(a)
 
@@ -69,4 +77,4 @@ print(d[0])
 
 cuda.init()
 num = cuda.Device.count()
-print("num = ",num) 
+print("num = ",num)
