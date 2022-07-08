@@ -3,10 +3,13 @@ import pycuda.driver as cuda
 import numpy
 import pycuda.autoinit
 import time
+from tensorflow import keras
 
 #pip install pycuda
+#pip install tensorflow
 
 print("ffs")
+(img_train, label_train), (img_test, label_test) = keras.datasets.mnist.load_data()
 
 mod = comp.SourceModule(
     """
