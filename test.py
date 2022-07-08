@@ -44,14 +44,31 @@ add_them = mod.get_function("add_them")
 a=numpy.empty(1000).astype(numpy.float32); a.fill(1)
 b=numpy.empty(1000).astype(numpy.float32); b.fill(1)
 
-w1=numpy.empty((4,784)).astype(numpy.float32); w1.fill(1)
-print("w1 = ",w1)
+w0=numpy.empty((4,784)).astype(numpy.float32); w0.fill(1)
+w1=numpy.empty((10,4)).astype(numpy.float32); w1.fill(1)
 f = open("relu-weights784-4-10.txt", "r")
 lines = f.readlines()[1:785]
+i = 0
 for line in lines:
   line = line.replace("\n","")
   array = line.split(",")
-  print(array)
+  for j in range(len(array)):
+    w0[j][i] = array[j]
+  i+=1
+
+f = open("relu-weights784-4-10.txt", "r")
+lines = f.readlines()[785:]
+i = 0
+for line in lines:
+  line = line.replace("\n","")
+  array = line.split(",")
+  for j in range(len(array)):
+    w1[j][i] = array[j]
+  i+=1
+
+testNet = Net()
+testNet.weights[0] = w0
+testNet.weights.append(w1)
 
 dest = numpy.zeros_like(a)
 
