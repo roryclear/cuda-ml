@@ -21,8 +21,10 @@ __global__ void add_them(float *dest, float *a, float *b)
 
 __global__ void relu(float *a)
 {
-  if(a < 0) {
-    a = 0;
+  const int i = threadIdx.x;
+  if(a[i] < 0)
+  {
+    a[i] = 0;
   }
 }
 """
@@ -67,4 +69,4 @@ print(d[0])
 
 cuda.init()
 num = cuda.Device.count()
-print("num = ",num)
+print("num = ",num) 
