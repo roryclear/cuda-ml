@@ -99,7 +99,7 @@ cuda.memcpy_htod(d_gpu, d)
 
 start_time = time.time()
 for i in range(10000):
-  add_them(a_gpu, a_gpu, b_gpu, block=(1000, 1, 1))
+  add_them(a_gpu, a_gpu, b_gpu, block=(1000, 1, 1), grid=(1,1))
 print("--- %s seconds ---" % (time.time() - start_time))
 
 cuda.memcpy_dtoh(d, a_gpu)
