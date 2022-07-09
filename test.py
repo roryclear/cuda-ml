@@ -20,6 +20,8 @@ class Net():
 print("ffs")
 (img_train, label_train), (img_test, label_test) = keras.datasets.mnist.load_data()
 
+
+
 mod = comp.SourceModule(
     """
 __global__ void add_them(float *dest, float *a, float *b)
@@ -38,6 +40,9 @@ __global__ void relu(float *a)
 }
 """
 )
+
+MAX_THREADS_PER_BLOCK = \
+    cuda.Device(0).get_attribute(pycuda._driver.device_attribute.MAX_THREADS_PER_BLOCK)
 
 add_them = mod.get_function("add_them")
 
