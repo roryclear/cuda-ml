@@ -81,10 +81,11 @@ cuda.memcpy_htod(b_gpu, b)
 d_gpu = cuda.mem_alloc(d.nbytes)
 cuda.memcpy_htod(d_gpu, d)
 
-n = numpy.int32(3)
+nb = 3
+n = numpy.int32(nb)
 
 #matrixMul(d_gpu,a_gpu,b_gpu,block=(4,4,1))
-add_them(d_gpu, a_gpu, b_gpu, n, block=(3,3,1))
+add_them(d_gpu, a_gpu, b_gpu, n, block=(nb,nb,1))
 
 cuda.memcpy_dtoh(d, d_gpu)
 for i in range(len(d)):
