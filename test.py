@@ -20,14 +20,26 @@ class Net():
 print("ffs")
 (img_train, label_train), (img_test, label_test) = keras.datasets.mnist.load_data()
 
-
+numberr = numpy.int32(0)
 
 mod = comp.SourceModule(
     """
-__global__ void add_them(float *dest, float *a, float *b)
+__global__ void add_them(float *d, float *a, float *b)
+{
+  int row = threadIdx.y;
+  int col = threadIdx.x;
+
+  float t = 0;
+  for(int i = 0; i < 2; i++){
+    t += a[row * 2 + i] * b[col + 2 * i];
+  }
+  d[row * 2 + col] = t;
+}
+
+__global__ void minus_them(float *d, float *a)
 {
   const int i = threadIdx.x;
-  dest[i] = a[i] + b[i];
+  atomicAdd(&d[0], -a[i]);
 }
 
 __global__ void relu(float *a)
@@ -38,6 +50,13 @@ __global__ void relu(float *a)
     a[i] = 0;
   }
 }
+
+__global__ void matrixMul(int *d, int *a, int *b)
+{
+  const int i = threadIdx.x;
+  const int j = threadIdx.y;
+  d[i] = threadIdx.x;
+}
 """
 )
 
@@ -45,47 +64,13 @@ MAX_THREADS_PER_BLOCK = \
     cuda.Device(0).get_attribute(pycuda._driver.device_attribute.MAX_THREADS_PER_BLOCK)
 
 add_them = mod.get_function("add_them")
+minus_them = mod.get_function("minus_them")
+matrixMul = mod.get_function("matrixMul")
 
-a=numpy.empty(1000).astype(numpy.float32); a.fill(1)
-b=numpy.empty(1000).astype(numpy.float32); b.fill(1)
-
-w0=numpy.empty((4,784)).astype(numpy.float32); w0.fill(1)
-w1=numpy.empty((10,4)).astype(numpy.float32); w1.fill(1)
-f = open("relu-weights784-4-10.txt", "r")
-lines = f.readlines()[1:785]
-i = 0
-for line in lines:
-  line = line.replace("\n","")
-  array = line.split(",")
-  for j in range(len(array)):
-    w0[j][i] = array[j]
-  i+=1
-
-f = open("relu-weights784-4-10.txt", "r")
-lines = f.readlines()[785:]
-i = 0
-for line in lines:
-  line = line.replace("\n","")
-  array = line.split(",")
-  for j in range(len(array)):
-    w1[j][i] = array[j]
-  i+=1
-
-testNet = Net()
-testNet.weights[0] = w0
-testNet.weights.append(w1)
-
-dest = numpy.zeros_like(a)
-
-start_time = time.time()
-for i in range(100000):
-  add_them(cuda.Out(a), cuda.In(a), cuda.In(b), block=(1000, 1, 1))
-print("--- %s seconds ---" % (time.time() - start_time))
-
-print(a[0])
-
-a=numpy.empty(1000).astype(numpy.float32); a.fill(1)
-b=numpy.empty(1000).astype(numpy.float32); b.fill(1)
+#a=numpy.empty(1024, dtype=numpy.float32); a.fill(numpy.float32(1))
+a=numpy.matrix('2 0; 1 9', dtype=numpy.float32)
+b=numpy.matrix('3 9; 4 7', dtype=numpy.float32)
+d=numpy.zeros_like(a)
 
 a_gpu = cuda.mem_alloc(a.nbytes)
 cuda.memcpy_htod(a_gpu, a)
@@ -93,17 +78,13 @@ cuda.memcpy_htod(a_gpu, a)
 b_gpu = cuda.mem_alloc(b.nbytes)
 cuda.memcpy_htod(b_gpu, b)
 
-d = numpy.zeros_like(a)
 d_gpu = cuda.mem_alloc(d.nbytes)
 cuda.memcpy_htod(d_gpu, d)
 
-start_time = time.time()
-for i in range(10000):
-  add_them(a_gpu, a_gpu, b_gpu, block=(1000, 1, 1), grid=(1,1))
-print("--- %s seconds ---" % (time.time() - start_time))
 
-cuda.memcpy_dtoh(d, a_gpu)
+#matrixMul(d_gpu,a_gpu,b_gpu,block=(4,4,1))
+add_them(d_gpu, a_gpu, b_gpu, block=(2,2,1))
 
-print(d[0])
-
-cuda.init()
+cuda.memcpy_dtoh(d, d_gpu)
+for i in range(len(d)):
+  print(i," : ", d[i])
