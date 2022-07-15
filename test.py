@@ -31,9 +31,9 @@ __global__ void add_them(float *d, float *a, float *b, int n)
 
   float t = 0;
   for(int i = 0; i < n; i++){
-    t += a[row * n + i] * b[col + n * i];
+    t += a[(row * n) + i] * b[col + (blockDim.x * i)];
   }
-  d[row * n + col] = t;
+  d[(row * blockDim.x) + col] = t;
 }
 
 __global__ void minus_them(float *d, float *a)
@@ -68,9 +68,9 @@ minus_them = mod.get_function("minus_them")
 matrixMul = mod.get_function("matrixMul")
 
 #a=numpy.empty(1024, dtype=numpy.float32); a.fill(numpy.float32(1))
-a=numpy.matrix('12 8 4; 3 17 14; 9 8 10', dtype=numpy.float32)
-b=numpy.matrix('5 19 3; 6 15 9; 7 8 16', dtype=numpy.float32)
-d=numpy.zeros_like(a)
+a=numpy.matrix('3 2 1 5; 9 1 3 0', dtype=numpy.float32)
+b=numpy.matrix('2 9 0; 1 3 5; 2 4 7; 8 1 5', dtype=numpy.float32)
+d=numpy.matrix('0 0 0; 0 0 0', dtype=numpy.float32)
 
 a_gpu = cuda.mem_alloc(a.nbytes)
 cuda.memcpy_htod(a_gpu, a)
@@ -81,11 +81,14 @@ cuda.memcpy_htod(b_gpu, b)
 d_gpu = cuda.mem_alloc(d.nbytes)
 cuda.memcpy_htod(d_gpu, d)
 
-nb = 3
-n = numpy.int32(nb)
+n = 4
+n_NP = numpy.int32(n)
+
+nrA = 2 # number of rows in A
+ncB = 3 # number of cols in B
 
 #matrixMul(d_gpu,a_gpu,b_gpu,block=(4,4,1))
-add_them(d_gpu, a_gpu, b_gpu, n, block=(nb,nb,1))
+add_them(d_gpu, a_gpu, b_gpu, n_NP, block=(ncB,nrA,1))
 
 cuda.memcpy_dtoh(d, d_gpu)
 for i in range(len(d)):
