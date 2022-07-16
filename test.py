@@ -18,16 +18,47 @@ class Net():
         return 0
 
 print("ffs")
+
+#---- mnist stuff ---- 
+
 (img_train, label_train), (img_test, label_test) = keras.datasets.mnist.load_data()
 
-numberr = numpy.int32(0)
+w0=numpy.empty((4,784)).astype(numpy.float32); w0.fill(1)
+w1=numpy.empty((10,4)).astype(numpy.float32); w1.fill(1)
+f = open("relu-weights784-4-10.txt", "r")
+lines = f.readlines()[1:785]
+i = 0
+for line in lines:
+  line = line.replace("\n","")
+  array = line.split(",")
+  for j in range(len(array)):
+    w0[j][i] = array[j]
+  i+=1
+
+f = open("relu-weights784-4-10.txt", "r")
+lines = f.readlines()[785:]
+i = 0
+for line in lines:
+  line = line.replace("\n","")
+  array = line.split(",")
+  for j in range(len(array)):
+    w1[j][i] = array[j]
+  i+=1
+
+testNet = Net()
+testNet.weights[0] = w0
+testNet.weights.append(w1)
+
+print("w1 = ",w1)
+
+# --------
 
 mod = comp.SourceModule(
     """
-__global__ void add_them(float *d, float *a, float *b, int n)
+__global__ void multiply_them(float *d, float *a, float *b, int n)
 {
-  int row = threadIdx.y;
-  int col = threadIdx.x;
+  int row = blockDim.y * blockIdx.y + threadIdx.y;
+  int col = blockDim.x * blockIdx.x + threadIdx.x;
 
   float t = 0;
   for(int i = 0; i < n; i++){
@@ -63,7 +94,7 @@ __global__ void matrixMul(int *d, int *a, int *b)
 MAX_THREADS_PER_BLOCK = \
     cuda.Device(0).get_attribute(pycuda._driver.device_attribute.MAX_THREADS_PER_BLOCK)
 
-add_them = mod.get_function("add_them")
+add_them = mod.get_function("multiply_them")
 minus_them = mod.get_function("minus_them")
 matrixMul = mod.get_function("matrixMul")
 
