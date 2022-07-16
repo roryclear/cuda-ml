@@ -60,9 +60,10 @@ __global__ void matrixMul(int *d, int *a, int *b)
 MAX_THREADS_PER_BLOCK = \
     cuda.Device(0).get_attribute(pycuda._driver.device_attribute.MAX_THREADS_PER_BLOCK)
 
-multuiply_them = mod.get_function("multiply_them")
+multiply_them = mod.get_function("multiply_them")
 minus_them = mod.get_function("minus_them")
 matrixMul = mod.get_function("matrixMul")
+relu = mod.get_function("relu")
 
 
 #---- mnist stuff ---- 
@@ -95,15 +96,9 @@ testNet = Net()
 testNet.weights[0] = w0
 testNet.weights.append(w1)
 
-print("w0 = ",w0)
-
 testImg = img_test[0]
 
-print("test img type = ", type(testImg[0][0]))
-
 testImg32 = testImg.astype(numpy.float32)
-print("test img = ", testImg32)
-print("testImg32 type = ", type(testImg32[0][0]))
 
 for y in range(len(testImg32)):
   for x in range(len(testImg32[y])):
@@ -114,10 +109,17 @@ cuda.memcpy_htod(img_gpu, testImg32)
 
 w0_gpu = cuda.mem_alloc(w0.nbytes)
 cuda.memcpy_htod(w0_gpu, w0)
+w1_gpu = cuda.mem_alloc(w1.nbytes)
+cuda.memcpy_htod(w1_gpu, w1)
 
-d = numpy.zeros((4, 1),dtype=numpy.float32)
-d_gpu = cuda.mem_alloc(d.nbytes)
-cuda.memcpy_htod(d_gpu,d)
+n1 = numpy.zeros((4, 1),dtype=numpy.float32)
+n1_gpu = cuda.mem_alloc(n1.nbytes)
+cuda.memcpy_htod(n1_gpu,n1)
+
+n2 = numpy.zeros((10, 1),dtype=numpy.float32)
+n2_gpu = cuda.mem_alloc(n2.nbytes)
+cuda.memcpy_htod(n2_gpu,n2)
+
 
 n = 784
 n_NP = numpy.int32(n)
@@ -126,10 +128,21 @@ nrA = 4 # number of rows in A
 ncB = 1 # number of cols in B
 
 #matrixMul(d_gpu,a_gpu,b_gpu,block=(4,4,1))
-multuiply_them(d_gpu, w0_gpu, img_gpu, n_NP, block=(ncB,nrA,1))
-cuda.memcpy_dtoh(d,d_gpu)
+multiply_them(n1_gpu, w0_gpu, img_gpu, n_NP, block=(ncB,nrA,1))
+relu(n1_gpu,block=(4,1,1))
 
-print(d)
+n = 4
+n_NP = numpy.int32(n)
+
+nrA = 10 # number of rows in A
+ncB = 1 # number of cols in B
+
+multiply_them(n2_gpu, w1_gpu, n1_gpu, n_NP, block=(ncB,nrA,1))
+relu(n2_gpu,block=(10,1,1))
+
+cuda.memcpy_dtoh(n2,n2_gpu)
+
+print(n2)
 
 # --------
 
@@ -154,7 +167,7 @@ nrA = 3 # number of rows in A
 ncB = 1 # number of cols in B
 
 #matrixMul(d_gpu,a_gpu,b_gpu,block=(4,4,1))
-multuiply_them(d_gpu, a_gpu, b_gpu, n_NP, block=(ncB,nrA,1))
+multiply_them(d_gpu, a_gpu, b_gpu, n_NP, block=(ncB,nrA,1))
 
 cuda.memcpy_dtoh(d, d_gpu)
 for i in range(len(d)):
