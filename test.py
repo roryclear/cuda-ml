@@ -96,7 +96,21 @@ testNet = Net()
 testNet.weights[0] = w0
 testNet.weights.append(w1)
 
+w0_gpu = cuda.mem_alloc(w0.nbytes)
+cuda.memcpy_htod(w0_gpu, w0)
+w1_gpu = cuda.mem_alloc(w1.nbytes)
+cuda.memcpy_htod(w1_gpu, w1)
+
+n1 = numpy.zeros((4, 1),dtype=numpy.float32)
+n1_gpu = cuda.mem_alloc(n1.nbytes)
+cuda.memcpy_htod(n1_gpu,n1)
+
+n2 = numpy.zeros((10, 1),dtype=numpy.float32)
+n2_gpu = cuda.mem_alloc(n2.nbytes)
+cuda.memcpy_htod(n2_gpu,n2)
+
 correct = 0
+start_time = time.time()
 for i in range(10000):
   testImg = img_test[i]
 
@@ -104,20 +118,6 @@ for i in range(10000):
   
   img_gpu = cuda.mem_alloc(testImg32.nbytes)
   cuda.memcpy_htod(img_gpu, testImg32)
-
-  w0_gpu = cuda.mem_alloc(w0.nbytes)
-  cuda.memcpy_htod(w0_gpu, w0)
-  w1_gpu = cuda.mem_alloc(w1.nbytes)
-  cuda.memcpy_htod(w1_gpu, w1)
-
-  n1 = numpy.zeros((4, 1),dtype=numpy.float32)
-  n1_gpu = cuda.mem_alloc(n1.nbytes)
-  cuda.memcpy_htod(n1_gpu,n1)
-
-  n2 = numpy.zeros((10, 1),dtype=numpy.float32)
-  n2_gpu = cuda.mem_alloc(n2.nbytes)
-  cuda.memcpy_htod(n2_gpu,n2)
-
 
   n = 784
   n_NP = numpy.int32(n)
@@ -145,6 +145,7 @@ for i in range(10000):
     correct +=1
   #guess = output.index(max(output))
   #print("guess = ",guess)
+print("--- %s seconds ---" % (time.time() - start_time))
 print("correct = ",(correct/10000))
 
 # --------
