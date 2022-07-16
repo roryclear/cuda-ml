@@ -96,53 +96,56 @@ testNet = Net()
 testNet.weights[0] = w0
 testNet.weights.append(w1)
 
-testImg = img_test[0]
+correct = 0
+for i in range(10000):
+  testImg = img_test[i]
 
-testImg32 = testImg.astype(numpy.float32)
+  testImg32 = testImg.astype(numpy.float32)
+  
+  img_gpu = cuda.mem_alloc(testImg32.nbytes)
+  cuda.memcpy_htod(img_gpu, testImg32)
 
-for y in range(len(testImg32)):
-  for x in range(len(testImg32[y])):
-    testImg32[y][x] = testImg[y][x] / 255
- 
-img_gpu = cuda.mem_alloc(testImg32.nbytes)
-cuda.memcpy_htod(img_gpu, testImg32)
+  w0_gpu = cuda.mem_alloc(w0.nbytes)
+  cuda.memcpy_htod(w0_gpu, w0)
+  w1_gpu = cuda.mem_alloc(w1.nbytes)
+  cuda.memcpy_htod(w1_gpu, w1)
 
-w0_gpu = cuda.mem_alloc(w0.nbytes)
-cuda.memcpy_htod(w0_gpu, w0)
-w1_gpu = cuda.mem_alloc(w1.nbytes)
-cuda.memcpy_htod(w1_gpu, w1)
+  n1 = numpy.zeros((4, 1),dtype=numpy.float32)
+  n1_gpu = cuda.mem_alloc(n1.nbytes)
+  cuda.memcpy_htod(n1_gpu,n1)
 
-n1 = numpy.zeros((4, 1),dtype=numpy.float32)
-n1_gpu = cuda.mem_alloc(n1.nbytes)
-cuda.memcpy_htod(n1_gpu,n1)
-
-n2 = numpy.zeros((10, 1),dtype=numpy.float32)
-n2_gpu = cuda.mem_alloc(n2.nbytes)
-cuda.memcpy_htod(n2_gpu,n2)
+  n2 = numpy.zeros((10, 1),dtype=numpy.float32)
+  n2_gpu = cuda.mem_alloc(n2.nbytes)
+  cuda.memcpy_htod(n2_gpu,n2)
 
 
-n = 784
-n_NP = numpy.int32(n)
+  n = 784
+  n_NP = numpy.int32(n)
 
-nrA = 4 # number of rows in A
-ncB = 1 # number of cols in B
+  nrA = 4 # number of rows in A
+  ncB = 1 # number of cols in B
 
-#matrixMul(d_gpu,a_gpu,b_gpu,block=(4,4,1))
-multiply_them(n1_gpu, w0_gpu, img_gpu, n_NP, block=(ncB,nrA,1))
-relu(n1_gpu,block=(4,1,1))
+  #matrixMul(d_gpu,a_gpu,b_gpu,block=(4,4,1))
+  multiply_them(n1_gpu, w0_gpu, img_gpu, n_NP, block=(ncB,nrA,1))
+  relu(n1_gpu,block=(4,1,1))
 
-n = 4
-n_NP = numpy.int32(n)
+  n = 4
+  n_NP = numpy.int32(n)
 
-nrA = 10 # number of rows in A
-ncB = 1 # number of cols in B
+  nrA = 10 # number of rows in A
+  ncB = 1 # number of cols in B
 
-multiply_them(n2_gpu, w1_gpu, n1_gpu, n_NP, block=(ncB,nrA,1))
-relu(n2_gpu,block=(10,1,1))
+  multiply_them(n2_gpu, w1_gpu, n1_gpu, n_NP, block=(ncB,nrA,1))
+  relu(n2_gpu,block=(10,1,1))
 
-cuda.memcpy_dtoh(n2,n2_gpu)
+  cuda.memcpy_dtoh(n2,n2_gpu)
 
-print(n2)
+  guess = n2.argmax()
+  if guess == label_test[i]:
+    correct +=1
+  #guess = output.index(max(output))
+  #print("guess = ",guess)
+print("correct = ",(correct/10000))
 
 # --------
 
