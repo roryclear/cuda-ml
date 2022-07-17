@@ -15,6 +15,26 @@ class Net():
         self.weights = [[[]]]
         
     def forward(self, input):
+        n = len(w0[0]) # number of columns in A / number of rows in B
+        n_NP = numpy.int32(n)
+
+        nrA = len(w0) # number of rows in A
+        ncB = 1 # number of cols in B
+
+        #matrixMul(d_gpu,a_gpu,b_gpu,block=(4,4,1))
+        multiply_them(n1_gpu, w0_gpu, img_gpu, n_NP, block=(ncB,nrA,1))
+        relu(n1_gpu,block=(4,1,1))
+
+        n = len(w1[0])
+        n_NP = numpy.int32(n)
+
+        nrA = len(w1) # number of rows in A
+        ncB = 1 # number of cols in B
+
+        multiply_them(n2_gpu, w1_gpu, n1_gpu, n_NP, block=(ncB,nrA,1))
+        relu(n2_gpu,block=(len(n2),1,1))
+
+        cuda.memcpy_dtoh(n2,n2_gpu)
         return 0
 
 print("ffs")
@@ -75,7 +95,11 @@ img_test = img_test / 255
 
 w0=numpy.empty((4,784)).astype(numpy.float32); w0.fill(1)
 w1=numpy.empty((10,4)).astype(numpy.float32); w1.fill(1)
-f = open("relu-weights784-4-10.txt", "r")
+
+weightsFile = "relu-weights784-4-10.txt"
+#weightsFile = "relu-untrained-weights784-4-10.txt"
+
+f = open(weightsFile, "r")
 lines = f.readlines()[1:785]
 i = 0
 for line in lines:
@@ -85,7 +109,7 @@ for line in lines:
     w0[j][i] = array[j]
   i+=1
 
-f = open("relu-weights784-4-10.txt", "r")
+f = open(weightsFile, "r")
 lines = f.readlines()[785:]
 i = 0
 for line in lines:
@@ -122,26 +146,7 @@ for i in range(len(img_test)):
   img_gpu = cuda.mem_alloc(testImg32.nbytes)
   cuda.memcpy_htod(img_gpu, testImg32)
 
-  n = len(w0[0]) # number of columns in A / number of rows in B
-  n_NP = numpy.int32(n)
-
-  nrA = len(w0) # number of rows in A
-  ncB = 1 # number of cols in B
-
-  #matrixMul(d_gpu,a_gpu,b_gpu,block=(4,4,1))
-  multiply_them(n1_gpu, w0_gpu, img_gpu, n_NP, block=(ncB,nrA,1))
-  relu(n1_gpu,block=(4,1,1))
-
-  n = len(w1[0])
-  n_NP = numpy.int32(n)
-
-  nrA = len(w1) # number of rows in A
-  ncB = 1 # number of cols in B
-
-  multiply_them(n2_gpu, w1_gpu, n1_gpu, n_NP, block=(ncB,nrA,1))
-  relu(n2_gpu,block=(len(n2),1,1))
-
-  cuda.memcpy_dtoh(n2,n2_gpu)
+  testNet.forward(img_gpu)
 
   guess = n2.argmax()
   if guess == label_test[i]:
