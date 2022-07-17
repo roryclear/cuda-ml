@@ -70,6 +70,10 @@ relu = mod.get_function("relu")
 
 (img_train, label_train), (img_test, label_test) = keras.datasets.mnist.load_data()
 
+img_train = img_train / 255
+img_test = img_test / 255
+print("img[0] -> ",img_test[0])
+
 w0=numpy.empty((4,784)).astype(numpy.float32); w0.fill(1)
 w1=numpy.empty((10,4)).astype(numpy.float32); w1.fill(1)
 f = open("relu-weights784-4-10.txt", "r")
