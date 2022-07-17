@@ -139,7 +139,7 @@ for i in range(len(img_test)):
   ncB = 1 # number of cols in B
 
   multiply_them(n2_gpu, w1_gpu, n1_gpu, n_NP, block=(ncB,nrA,1))
-  relu(n2_gpu,block=(10,1,1))
+  relu(n2_gpu,block=(len(n2),1,1))
 
   cuda.memcpy_dtoh(n2,n2_gpu)
 
@@ -149,7 +149,7 @@ for i in range(len(img_test)):
   #guess = output.index(max(output))
   #print("guess = ",guess)
 print("--- %s seconds ---" % (time.time() - start_time))
-print("correct = ",(correct/10000))
+print("correct = ",(correct/len(img_test)))
 
 # --------
 
