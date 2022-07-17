@@ -72,7 +72,6 @@ relu = mod.get_function("relu")
 
 img_train = img_train / 255
 img_test = img_test / 255
-print("img[0] -> ",img_test[0])
 
 w0=numpy.empty((4,784)).astype(numpy.float32); w0.fill(1)
 w1=numpy.empty((10,4)).astype(numpy.float32); w1.fill(1)
@@ -115,7 +114,7 @@ cuda.memcpy_htod(n2_gpu,n2)
 
 correct = 0
 start_time = time.time()
-for i in range(10000):
+for i in range(len(img_test)):
   testImg = img_test[i]
 
   testImg32 = testImg.astype(numpy.float32)
@@ -123,20 +122,20 @@ for i in range(10000):
   img_gpu = cuda.mem_alloc(testImg32.nbytes)
   cuda.memcpy_htod(img_gpu, testImg32)
 
-  n = 784
+  n = len(w0[0]) # number of columns in A / number of rows in B
   n_NP = numpy.int32(n)
 
-  nrA = 4 # number of rows in A
+  nrA = len(w0) # number of rows in A
   ncB = 1 # number of cols in B
 
   #matrixMul(d_gpu,a_gpu,b_gpu,block=(4,4,1))
   multiply_them(n1_gpu, w0_gpu, img_gpu, n_NP, block=(ncB,nrA,1))
   relu(n1_gpu,block=(4,1,1))
 
-  n = 4
+  n = len(w1[0])
   n_NP = numpy.int32(n)
 
-  nrA = 10 # number of rows in A
+  nrA = len(w1) # number of rows in A
   ncB = 1 # number of cols in B
 
   multiply_them(n2_gpu, w1_gpu, n1_gpu, n_NP, block=(ncB,nrA,1))
