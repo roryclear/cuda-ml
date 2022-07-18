@@ -32,7 +32,7 @@ class Net():
         ncB = 1 # number of cols in B
 
         multiply_them(n2_gpu, w1_gpu, n1_gpu, n_NP, block=(ncB,nrA,1))
-        relu(n2_gpu,block=(len(n2),1,1))
+        sigmoid(n2_gpu,block=(len(n2),1,1))
 
         cuda.memcpy_dtoh(n2,n2_gpu)
         return 0
@@ -62,7 +62,7 @@ __global__ void minus_them(float *d, float *a)
 __global__ void relu(float *a)
 {
   const int i = threadIdx.x;
-  if(a[i] < 0)
+  if(a[i] < 0) 
   {
     a[i] = 0;
   }
@@ -74,6 +74,12 @@ __global__ void matrixMul(int *d, int *a, int *b)
   const int j = threadIdx.y;
   d[i] = threadIdx.x;
 }
+
+__global__ void sigmoid(float *d)
+{
+  const int i = threadIdx.x;
+  d[i] = 1 / (1 + exp(-d[i]));
+}
 """
 )
 
@@ -84,9 +90,10 @@ multiply_them = mod.get_function("multiply_them")
 minus_them = mod.get_function("minus_them")
 matrixMul = mod.get_function("matrixMul")
 relu = mod.get_function("relu")
+sigmoid = mod.get_function("sigmoid")
 
 
-#---- mnist stuff ----
+#---- mnist stuff ---- 
 
 (img_train, label_train), (img_test, label_test) = keras.datasets.mnist.load_data()
 
@@ -138,6 +145,10 @@ cuda.memcpy_htod(n2_gpu,n2)
 
 # --- training ---
 
+w1grads = numpy.zeros_like(w1)
+
+outputLoss = numpy.zeros((10),dtype=numpy.float32)
+
 correct = 0
 start_time = time.time()
 for i in range(len(img_test)):
@@ -152,6 +163,13 @@ for i in range(len(img_test)):
   guess = n2.argmax()
   if guess == label_train[i]:
     correct+=1
+
+  for j in range(10):
+    if j == label_train[i]:
+      outputLoss[j] = (1 - n2[j]) * (1 - n2[j])
+    else:
+      outputLoss[j] = (0 - n2[j]) * (0 - n2[j])
+
 print("--- %s seconds ---" % (time.time() - start_time))
 print("correct = ",(correct/len(img_test)))
 
@@ -204,5 +222,4 @@ multiply_them(d_gpu, a_gpu, b_gpu, n_NP, block=(ncB,nrA,1))
 cuda.memcpy_dtoh(d, d_gpu)
 for i in range(len(d)):
   print(i," : ", d[i])
-
 
