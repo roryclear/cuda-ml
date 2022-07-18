@@ -173,13 +173,15 @@ for epoch in range(10):
       else:
         outputLoss[j] = (0 - n2[j]) * (0 - n2[j])
 
-    for y in range(len(n1)):
-      prevOutput = n1[y]
-      for x in range(len(n1[y])):
-        output = n2[x]
-        input = n2[x] * (1 - n2[x])
-        gradient = -outputLoss[x] * input * prevOutput
-        w1[y][x] -= gradient * learningRate
+    #last weights
+
+    for x in range(len(w1)):
+      for y in range(len(w1[x])):
+        prevOutput = n1[y]
+        output = n2[y]
+        input = n2[y] * (1 - n2[y])
+        w1grads[x][y] = -outputLoss[y] * input * prevOutput
+        w1[x][y] -= w1grads[x][y] * learningRate
 
     cuda.memcpy_htod(w1_gpu, w1)
 
