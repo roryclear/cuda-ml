@@ -81,6 +81,12 @@ __global__ void sigmoid(float *d)
   const int i = threadIdx.x;
   d[i] = 1 / (1 + exp(-d[i]));
 }
+
+__global__ void donothing(float *d, float *a)
+{
+  const int i = threadIdx.x;
+  d[i] = a[i] * (1 - a[i]);
+}
 """
 )
 
@@ -92,6 +98,7 @@ minus_them = mod.get_function("minus_them")
 matrixMul = mod.get_function("matrixMul")
 relu = mod.get_function("relu")
 sigmoid = mod.get_function("sigmoid")
+donothing = mod.get_function("donothing")
 
 
 #---- mnist stuff ---- 
@@ -144,6 +151,9 @@ n2 = numpy.zeros((10, 1),dtype=numpy.float32)
 n2_gpu = cuda.mem_alloc(n2.nbytes)
 cuda.memcpy_htod(n2_gpu,n2)
 
+n2input = numpy.zeros((10, 1),dtype=numpy.float32)
+n2input_gpu = cuda.mem_alloc(n2input.nbytes)
+cuda.memcpy_htod(n2input_gpu,n2input)
 # --- training ---
 
 w1grads = numpy.zeros_like(w1)
@@ -162,6 +172,8 @@ for epoch in range(10):
     cuda.memcpy_htod(img_gpu,trainImg32)
 
     testNet.forward(img_gpu)
+    donothing(n2input_gpu,n2_gpu,block=(10,1,1))
+    cuda.memcpy_dtoh(n2input, n2input_gpu)
 
     guess = n2.argmax()
     if guess == label_train[i]:
@@ -179,7 +191,7 @@ for epoch in range(10):
       for y in range(len(w1[x])):
         prevOutput = n1[y]
         output = n2[y]
-        input = n2[y] * (1 - n2[y])
+        input = n2input[y]
         w1grads[x][y] = -outputLoss[y] * input * prevOutput
         w1[x][y] -= w1grads[x][y] * learningRate
 
