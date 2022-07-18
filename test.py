@@ -35,6 +35,7 @@ class Net():
         sigmoid(n2_gpu,block=(len(n2),1,1))
 
         cuda.memcpy_dtoh(n2,n2_gpu)
+        cuda.memcpy_dtoh(n1,n1_gpu)
         return 0
 
 print("ffs")
@@ -103,7 +104,7 @@ img_test = img_test / 255
 w0=numpy.empty((4,784)).astype(numpy.float32); w0.fill(1)
 w1=numpy.empty((10,4)).astype(numpy.float32); w1.fill(1)
 
-weightsFile = "relu-weights784-4-10.txt"
+weightsFile = "relu-untrained-weights784-4-10.txt"
 #weightsFile = "relu-untrained-weights784-4-10.txt"
 
 f = open(weightsFile, "r")
@@ -148,30 +149,42 @@ cuda.memcpy_htod(n2_gpu,n2)
 w1grads = numpy.zeros_like(w1)
 
 outputLoss = numpy.zeros((10),dtype=numpy.float32)
+learningRate = 1
+for epoch in range(10):
 
-correct = 0
-start_time = time.time()
-for i in range(len(img_test)):
-  trainImg = img_train[i]
-  trainImg32 = trainImg.astype(numpy.float32)
+  correct = 0
+  start_time = time.time()
+  for i in range(len(img_test)):
+    trainImg = img_train[i]
+    trainImg32 = trainImg.astype(numpy.float32)
 
-  img_gpu = cuda.mem_alloc(trainImg32.nbytes)
-  cuda.memcpy_htod(img_gpu,trainImg32)
+    img_gpu = cuda.mem_alloc(trainImg32.nbytes)
+    cuda.memcpy_htod(img_gpu,trainImg32)
 
-  testNet.forward(img_gpu)
+    testNet.forward(img_gpu)
 
-  guess = n2.argmax()
-  if guess == label_train[i]:
-    correct+=1
+    guess = n2.argmax()
+    if guess == label_train[i]:
+      correct+=1
 
-  for j in range(10):
-    if j == label_train[i]:
-      outputLoss[j] = (1 - n2[j]) * (1 - n2[j])
-    else:
-      outputLoss[j] = (0 - n2[j]) * (0 - n2[j])
+    for j in range(10):
+      if j == label_train[i]:
+        outputLoss[j] = (1 - n2[j]) * (1 - n2[j])
+      else:
+        outputLoss[j] = (0 - n2[j]) * (0 - n2[j])
 
-print("--- %s seconds ---" % (time.time() - start_time))
-print("correct = ",(correct/len(img_test)))
+    for y in range(len(n1)):
+      prevOutput = n1[y]
+      for x in range(len(n1[y])):
+        output = n2[x]
+        input = n2[x] * (1 - n2[x])
+        gradient = -outputLoss[x] * input * prevOutput
+        w1[y][x] -= gradient * learningRate
+
+    cuda.memcpy_htod(w1_gpu, w1)
+
+  print("--- %s seconds ---" % (time.time() - start_time))
+  print("correct = ",(correct/len(img_test)))
 
 # --- testing ---
 correct = 0
