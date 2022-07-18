@@ -62,7 +62,7 @@ __global__ void minus_them(float *d, float *a)
 __global__ void relu(float *a)
 {
   const int i = threadIdx.x;
-  if(a[i] < 0) 
+  if(a[i] < 0)
   {
     a[i] = 0;
   }
@@ -86,7 +86,7 @@ matrixMul = mod.get_function("matrixMul")
 relu = mod.get_function("relu")
 
 
-#---- mnist stuff ---- 
+#---- mnist stuff ----
 
 (img_train, label_train), (img_test, label_test) = keras.datasets.mnist.load_data()
 
@@ -136,6 +136,26 @@ n2 = numpy.zeros((10, 1),dtype=numpy.float32)
 n2_gpu = cuda.mem_alloc(n2.nbytes)
 cuda.memcpy_htod(n2_gpu,n2)
 
+# --- training ---
+
+correct = 0
+start_time = time.time()
+for i in range(len(img_test)):
+  trainImg = img_train[i]
+  trainImg32 = trainImg.astype(numpy.float32)
+
+  img_gpu = cuda.mem_alloc(trainImg32.nbytes)
+  cuda.memcpy_htod(img_gpu,trainImg32)
+
+  testNet.forward(img_gpu)
+
+  guess = n2.argmax()
+  if guess == label_train[i]:
+    correct+=1
+print("--- %s seconds ---" % (time.time() - start_time))
+print("correct = ",(correct/len(img_test)))
+
+# --- testing ---
 correct = 0
 start_time = time.time()
 for i in range(len(img_test)):
@@ -184,3 +204,5 @@ multiply_them(d_gpu, a_gpu, b_gpu, n_NP, block=(ncB,nrA,1))
 cuda.memcpy_dtoh(d, d_gpu)
 for i in range(len(d)):
   print(i," : ", d[i])
+
+
