@@ -82,7 +82,7 @@ __global__ void sigmoid(float *d)
   d[i] = 1 / (1 + exp(-d[i]));
 }
 
-__global__ void donothing(float *d, float *a)
+__global__ void der_sigmoid(float *d, float *a)
 {
   const int i = threadIdx.x;
   d[i] = a[i] * (1 - a[i]);
@@ -98,7 +98,7 @@ minus_them = mod.get_function("minus_them")
 matrixMul = mod.get_function("matrixMul")
 relu = mod.get_function("relu")
 sigmoid = mod.get_function("sigmoid")
-donothing = mod.get_function("donothing")
+der_sigmoid = mod.get_function("der_sigmoid")
 
 
 #---- mnist stuff ---- 
@@ -172,7 +172,7 @@ for epoch in range(10):
     cuda.memcpy_htod(img_gpu,trainImg32)
 
     testNet.forward(img_gpu)
-    donothing(n2input_gpu,n2_gpu,block=(10,1,1))
+    der_sigmoid(n2input_gpu,n2_gpu,block=(10,1,1))
     cuda.memcpy_dtoh(n2input, n2input_gpu)
 
     guess = n2.argmax()
