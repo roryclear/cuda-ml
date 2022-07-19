@@ -164,7 +164,7 @@ for epoch in range(10):
 
   correct = 0
   start_time = time.time()
-  for i in range(len(img_test)):
+  for i in range(len(img_train)):
     trainImg = img_train[i]
     trainImg32 = trainImg.astype(numpy.float32)
 
@@ -198,7 +198,7 @@ for epoch in range(10):
     cuda.memcpy_htod(w1_gpu, w1)
 
   print("--- %s seconds ---" % (time.time() - start_time))
-  print("correct = ",(correct/len(img_test)))
+  print("correct = ",(correct/len(img_train)))
 
 # --- testing ---
 correct = 0
@@ -219,7 +219,7 @@ for i in range(len(img_test)):
   #guess = output.index(max(output))
   #print("guess = ",guess)
 print("--- %s seconds ---" % (time.time() - start_time))
-print("correct = ",(correct/len(img_test)))
+print("test dataset: correct = ",(correct/len(img_test)))
 
 # --------
 
