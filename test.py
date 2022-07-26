@@ -132,6 +132,8 @@ w1=numpy.empty((10,4)).astype(numpy.float32); w1.fill(1)
 
 weightsFile = "relu-untrained-weights784-4-10.txt"
 #weightsFile = "relu-weights784-4-10.txt"
+#weightsFile = "sigmoid-untrained-weights784-4-10.txt"
+#weightsFile = "sigmoid-weights784-4-10.txt"
 
 f = open(weightsFile, "r")
 lines = f.readlines()[1:785]
