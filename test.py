@@ -23,7 +23,7 @@ class Net():
 
         #matrixMul(d_gpu,a_gpu,b_gpu,block=(4,4,1))
         multiply_them(n1_gpu, w0_gpu, img_gpu, n_NP, block=(ncB,nrA,1))
-        relu(n1_gpu,block=(4,1,1))
+        sigmoid(n1_gpu,block=(4,1,1))
 
         n = len(w1[0])
         n_NP = numpy.int32(n)
@@ -130,10 +130,10 @@ img_test = img_test / 255
 w0=numpy.empty((4,784)).astype(numpy.float32); w0.fill(1)
 w1=numpy.empty((10,4)).astype(numpy.float32); w1.fill(1)
 
-weightsFile = "relu-untrained-weights784-4-10.txt"
+#weightsFile = "relu-untrained-weights784-4-10.txt"
 #weightsFile = "relu-weights784-4-10.txt"
 #weightsFile = "sigmoid-untrained-weights784-4-10.txt"
-#weightsFile = "sigmoid-weights784-4-10.txt"
+weightsFile = "sigmoid-weights784-4-10.txt"
 
 f = open(weightsFile, "r")
 lines = f.readlines()[1:785]
