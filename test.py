@@ -132,8 +132,8 @@ w1=numpy.empty((10,4)).astype(numpy.float32); w1.fill(1)
 
 #weightsFile = "relu-untrained-weights784-4-10.txt"
 #weightsFile = "relu-weights784-4-10.txt"
-#weightsFile = "sigmoid-untrained-weights784-4-10.txt"
-weightsFile = "sigmoid-weights784-4-10.txt"
+weightsFile = "sigmoid-untrained-weights784-4-10.txt"
+#weightsFile = "sigmoid-weights784-4-10.txt"
 
 f = open(weightsFile, "r")
 lines = f.readlines()[1:785]
@@ -180,8 +180,8 @@ cuda.memcpy_htod(n2input_gpu,n2input)
 w1grads = numpy.zeros_like(w1)
 
 outputLoss = numpy.zeros((10),dtype=numpy.float32)
-learningRate = 1
-for epoch in range(10):
+learningRate = 0.1
+for epoch in range(1):
 
   correct = 0
   start_time = time.time()
@@ -191,6 +191,8 @@ for epoch in range(10):
 
     img_gpu = cuda.mem_alloc(trainImg32.nbytes)
     cuda.memcpy_htod(img_gpu,trainImg32)
+
+    #last weights
 
     testNet.forward(img_gpu)
     der_sigmoid(n2input_gpu,n2_gpu,block=(10,1,1))
@@ -202,19 +204,35 @@ for epoch in range(10):
 
     for j in range(10):
       if j == label_train[i]:
-        outputLoss[j] = (1 - n2[j]) * (1 - n2[j])
+        outputLoss[j] = 1 - n2[j]
       else:
-        outputLoss[j] = (0 - n2[j]) * (0 - n2[j])
+        outputLoss[j] = 0 - n2[j]
 
-    #last weights
 
-    for x in range(len(w1)):
-      for y in range(len(w1[x])):
-        prevOutput = n1[y]
-        output = n2[y]
-        input = n2input[y]
-        w1grads[x][y] = -outputLoss[y] * input * prevOutput
+    #backward last weights
+    for y in range(len(w1[0])):
+      prevOutput = n1[y]
+      for x in range(len(w1)):
+        output = n2[x]
+        input = n2input[x]
+        dedw = -outputLoss[x] * input * prevOutput
+        #print("dedw y x -> ",y," ",x," -> ",dedw)
+        w1grads[x][y] += dedw
+      #print("\n")
+
+    #optimize last weights
+    for y in range(len(w1[0])):
+      for x in range(len(w1)):
         w1[x][y] -= w1grads[x][y] * learningRate
+    w1grads = numpy.zeros_like(w1)
+
+#    for x in range(len(w1)):
+#      for y in range(len(w1[x])):
+#        prevOutput = n1[y]
+#        output = n2[y]
+#        input = n2input[y]
+#        w1grads[x][y] = -outputLoss[y] * input * prevOutput
+#        w1[x][y] -= w1grads[x][y] * learningRate
 
     cuda.memcpy_htod(w1_gpu, w1)
 
@@ -222,6 +240,7 @@ for epoch in range(10):
   print("correct = ",(correct/len(img_train)))
 
 # --- testing ---
+
 correct = 0
 start_time = time.time()
 for i in range(len(img_test)):
