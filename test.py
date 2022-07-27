@@ -192,7 +192,6 @@ for epoch in range(1):
   start_time = time.time()
   for i in range(len(img_train)):
 
-
     trainImg = img_train[i]
     trainImg32 = trainImg.astype(numpy.float32)
 
@@ -235,7 +234,6 @@ for epoch in range(1):
     for y in range(len(w1[0])):
       for x in range(len(w1)):
         w1[x][y] -= w1grads[x][y] * learningRate
-    w1grads = numpy.zeros_like(w1)
 
   
     #backward first weights
@@ -245,16 +243,19 @@ for epoch in range(1):
         totalError = 0
         input = n1input[x]
         for n in range(len(n2)):
-          totalError += w1[n][x] * w1grads[n][x] / len(n2)
-        totalError = totalError * n1input[x] * n0[y]
+          totalError += (w1[n][x] * w1grads[n][x]) / len(n2)
+        totalError = totalError * input * n0[y]
         w0grads[x][y] += totalError
 
     #optimize first weights
-    for y in range(len(w0[0])):
-      for x in range(len(w0)):
-        w0[x][y] -= w0[x][y] * learningRate
-      w0grads = numpy.zeros_like(w0)
-  '''
+    for y in range(len(w0grads[0])):
+      for x in range(len(w0grads)):
+        w0[x][y] -= w0grads[x][y] * learningRate
+
+    '''
+    w1grads = numpy.zeros_like(w1)    
+    #w0grads = numpy.zeros_like(w0)
+    
 
 #    for x in range(len(w1)):
 #      for y in range(len(w1[x])):
@@ -264,6 +265,7 @@ for epoch in range(1):
 #        w1grads[x][y] = -outputLoss[y] * input * prevOutput
 #        w1[x][y] -= w1grads[x][y] * learningRate
 
+    cuda.memcpy_htod(w0_gpu, w0)
     cuda.memcpy_htod(w1_gpu, w1)
 
   print("--- %s seconds ---" % (time.time() - start_time))
