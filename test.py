@@ -57,7 +57,7 @@ __global__ void multiply_them(float *d, float *a, float *b, int n)
 __global__ void add_them(float *d, float *a)
 {
   int i = threadIdx.x;
-  d[i] = a[i] + d[i];
+  d[i] = -a[i] + d[i];
 }
 
 __global__ void array_mulitply(float *d, float *a, float *b)
