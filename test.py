@@ -199,6 +199,13 @@ w0grads = numpy.zeros_like(w0)
 w1grads = numpy.zeros_like(w1)
 
 outputLoss = numpy.zeros((10),dtype=numpy.float32)
+outputLoss_gpu = cuda.mem_alloc(outputLoss.nbytes)
+outputLossInput = numpy.zeros_like(outputLoss) #outputLoss * input
+outputLossInput_gpu = cuda.mem_alloc(outputLossInput.nbytes)
+cuda.memcpy_htod(outputLossInput_gpu,outputLossInput)
+
+img_gpu = cuda.mem_alloc(img_train[0].nbytes)
+
 learningRate = 0.1
 for epoch in range(1):
 
@@ -211,7 +218,6 @@ for epoch in range(1):
 
     n0 = trainImg32.flatten()
 
-    img_gpu = cuda.mem_alloc(trainImg32.nbytes)
     cuda.memcpy_htod(img_gpu,trainImg32)
 
     #last weights
@@ -232,13 +238,8 @@ for epoch in range(1):
       else:
         outputLoss[j] = 0 - n2[j]
 
-    outputLoss_gpu = cuda.mem_alloc(outputLoss.nbytes)
     cuda.memcpy_htod(outputLoss_gpu,outputLoss)
-
-    outputLossInput = numpy.zeros_like(outputLoss)
-    outputLossInput_gpu = cuda.mem_alloc(outputLossInput.nbytes)
-    cuda.memcpy_htod(outputLossInput_gpu,outputLossInput)
-
+    
     array_mulitply(outputLossInput_gpu,outputLoss_gpu,n2input_gpu,block=(10,1,1))
 
     w1grads_gpu = cuda.mem_alloc(w1grads.nbytes)
