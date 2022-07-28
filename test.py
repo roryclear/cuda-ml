@@ -198,6 +198,9 @@ cuda.memcpy_htod(n2input_gpu,n2input)
 w0grads = numpy.zeros_like(w0)
 w1grads = numpy.zeros_like(w1)
 
+w1grads_gpu = cuda.mem_alloc(w1grads.nbytes)
+cuda.memcpy_htod(w1grads_gpu,w1grads)
+
 outputLoss = numpy.zeros((10),dtype=numpy.float32)
 outputLoss_gpu = cuda.mem_alloc(outputLoss.nbytes)
 outputLossInput = numpy.zeros_like(outputLoss) #outputLoss * input
@@ -225,8 +228,6 @@ for epoch in range(1):
     testNet.forward(img_gpu)
     der_sigmoid(n1input_gpu,n1_gpu,block=(4,1,1))
     der_sigmoid(n2input_gpu,n2_gpu,block=(10,1,1))
-    cuda.memcpy_dtoh(n1input, n1input_gpu)
-    cuda.memcpy_dtoh(n2input, n2input_gpu)
 
     guess = n2.argmax()
     if guess == label_train[i]:
@@ -241,9 +242,6 @@ for epoch in range(1):
     cuda.memcpy_htod(outputLoss_gpu,outputLoss)
     
     array_mulitply(outputLossInput_gpu,outputLoss_gpu,n2input_gpu,block=(10,1,1))
-
-    w1grads_gpu = cuda.mem_alloc(w1grads.nbytes)
-    cuda.memcpy_htod(w1grads_gpu,w1grads)
 
     n = 1
     n_NP = numpy.int32(n)
@@ -275,20 +273,11 @@ for epoch in range(1):
     w1grads = numpy.zeros_like(w1)    
     #w0grads = numpy.zeros_like(w0)
     
-
-#    for x in range(len(w1)):
-#      for y in range(len(w1[x])):
-#        prevOutput = n1[y]
-#        output = n2[y]
-#        input = n2input[y]
-#        w1grads[x][y] = -outputLoss[y] * input * prevOutput
-#        w1[x][y] -= w1grads[x][y] * learningRate
-
-    cuda.memcpy_htod(w0_gpu, w0)
-    cuda.memcpy_htod(w1_gpu, w1)
-
   print("--- %s seconds ---" % (time.time() - start_time))
   print("correct = ",(correct/len(img_train)))
+
+  cuda.memcpy_htod(w0_gpu, w0)
+  cuda.memcpy_htod(w1_gpu, w1)
 
 # --- testing ---
 
