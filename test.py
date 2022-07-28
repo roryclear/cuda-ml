@@ -223,7 +223,6 @@ for epoch in range(1):
     for y in range(len(w1[0])):
       prevOutput = n1[y]
       for x in range(len(w1)):
-        output = n2[x]
         input = n2input[x]
         dedw = -outputLoss[x] * input * prevOutput
         #print("dedw y x -> ",y," ",x," -> ",dedw)
