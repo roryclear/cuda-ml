@@ -54,6 +54,12 @@ __global__ void multiply_them(float *d, float *a, float *b, int n)
   d[(row * blockDim.x) + col] = t;
 }
 
+__global__ void array_mulitply(float *d, float *a, float *b)
+{
+  const int i = threadIdx.x;
+  d[i] = -a[i] * b[i];
+}
+
 __global__ void minus_them(float *d, float *a)
 {
   const int i = threadIdx.x;
@@ -99,6 +105,7 @@ matrixMul = mod.get_function("matrixMul")
 relu = mod.get_function("relu")
 sigmoid = mod.get_function("sigmoid")
 der_sigmoid = mod.get_function("der_sigmoid")
+array_mulitply = mod.get_function("array_mulitply")
 
 # --- testing cuda matrix multiplication ---
 input = numpy.random.rand(784,1).astype(numpy.float32)
@@ -218,16 +225,22 @@ for epoch in range(1):
       else:
         outputLoss[j] = 0 - n2[j]
 
+    outputLoss_gpu = cuda.mem_alloc(outputLoss.nbytes)
+    cuda.memcpy_htod(outputLoss_gpu,outputLoss)
 
-    #backward last weights
-    for y in range(len(w1[0])):
-      prevOutput = n1[y]
-      for x in range(len(w1)):
-        input = n2input[x]
-        dedw = -outputLoss[x] * input * prevOutput
-        #print("dedw y x -> ",y," ",x," -> ",dedw)
-        w1grads[x][y] += dedw
-      #print("\n")
+    outputLossInput = numpy.zeros_like(outputLoss)
+    outputLossInput_gpu = cuda.mem_alloc(outputLossInput.nbytes)
+    cuda.memcpy_htod(outputLossInput_gpu,outputLossInput)
+
+    array_mulitply(outputLossInput_gpu,outputLoss_gpu,n2input_gpu,block=(10,1,1))
+
+    w1grads_gpu = cuda.mem_alloc(w1grads.nbytes)
+    cuda.memcpy_htod(w1grads_gpu,w1grads)
+
+    n = 1
+    n_NP = numpy.int32(n)
+    multiply_them(w1grads_gpu, outputLossInput_gpu, n1_gpu, n_NP, block=(4,10,1))
+    cuda.memcpy_dtoh(w1grads,w1grads_gpu)
 
     #optimize last weights
     for y in range(len(w1[0])):
