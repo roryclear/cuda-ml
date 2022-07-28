@@ -54,6 +54,12 @@ __global__ void multiply_them(float *d, float *a, float *b, int n)
   d[(row * blockDim.x) + col] = t;
 }
 
+__global__ void add_them(float *d, float *a)
+{
+  int i = threadIdx.x;
+  d[i] = a[i] + d[i];
+}
+
 __global__ void array_mulitply(float *d, float *a, float *b)
 {
   const int i = threadIdx.x;
@@ -100,6 +106,7 @@ MAX_THREADS_PER_BLOCK = \
     cuda.Device(0).get_attribute(pycuda._driver.device_attribute.MAX_THREADS_PER_BLOCK)
 
 multiply_them = mod.get_function("multiply_them")
+add_them = mod.get_function("add_them")
 minus_them = mod.get_function("minus_them")
 matrixMul = mod.get_function("matrixMul")
 relu = mod.get_function("relu")
@@ -242,10 +249,9 @@ for epoch in range(1):
     multiply_them(w1grads_gpu, outputLossInput_gpu, n1_gpu, n_NP, block=(4,10,1))
     cuda.memcpy_dtoh(w1grads,w1grads_gpu)
 
-    #optimize last weights
-    for y in range(len(w1[0])):
-      for x in range(len(w1)):
-        w1[x][y] -= w1grads[x][y] * learningRate
+    add_them(w1_gpu, w1grads_gpu,block=(40,1,1))
+    cuda.memcpy_dtoh(w1,w1_gpu)
+
 
   
     #backward first weights
