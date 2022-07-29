@@ -23,7 +23,7 @@ class Net():
 
         #matrixMul(d_gpu,a_gpu,b_gpu,block=(4,4,1))
         multiply_them(n1_gpu, w0_gpu, img_gpu, n_NP, block=(ncB,nrA,1))
-        sigmoid(n1_gpu,block=(4,1,1))
+        sigmoid(n1_gpu,block=(len(n1),1,1))
 
         n = len(w1[0])
         n_NP = numpy.int32(n)
@@ -233,7 +233,9 @@ for epoch in range(1):
     if guess == label_train[i]:
       correct+=1
 
-    for j in range(10):
+    #backward
+
+    for j in range(len(n2)):
       if j == label_train[i]:
         outputLoss[j] = 1 - n2[j]
       else:
@@ -241,12 +243,14 @@ for epoch in range(1):
 
     cuda.memcpy_htod(outputLoss_gpu,outputLoss)
     
-    array_mulitply(outputLossInput_gpu,outputLoss_gpu,n2input_gpu,block=(10,1,1))
+    array_mulitply(outputLossInput_gpu,outputLoss_gpu,n2input_gpu,block=(len(outputLoss),1,1))
 
     n = 1
     n_NP = numpy.int32(n)
-    multiply_them(w1grads_gpu, outputLossInput_gpu, n1_gpu, n_NP, block=(4,10,1))
+    multiply_them(w1grads_gpu, outputLossInput_gpu, n1_gpu, n_NP, block=(len(n1),len(outputLoss),1))
     cuda.memcpy_dtoh(w1grads,w1grads_gpu)
+
+    #optimize
 
     add_them(w1_gpu, w1grads_gpu,block=(40,1,1))
     cuda.memcpy_dtoh(w1,w1_gpu)
@@ -329,4 +333,3 @@ multiply_them(d_gpu, a_gpu, b_gpu, n_NP, block=(ncB,nrA,1))
 cuda.memcpy_dtoh(d, d_gpu)
 for i in range(len(d)):
   print(i," : ", d[i])
-
