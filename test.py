@@ -66,6 +66,16 @@ __global__ void array_mulitply(float *d, float *a, float *b)
   d[i] = -a[i] * b[i];
 }
 
+__global__ void get_output_loss(float *d, float *o, int a)
+{
+  int i = threadIdx.x;
+  if(i == a) {
+    d[i] = 1 - o[i];
+  } else {
+    d[i] = 0 - o[i];
+  }
+}
+
 __global__ void minus_them(float *d, float *a)
 {
   const int i = threadIdx.x;
@@ -113,6 +123,7 @@ relu = mod.get_function("relu")
 sigmoid = mod.get_function("sigmoid")
 der_sigmoid = mod.get_function("der_sigmoid")
 array_mulitply = mod.get_function("array_mulitply")
+get_output_loss = mod.get_function("get_output_loss")
 
 # --- testing cuda matrix multiplication ---
 input = numpy.random.rand(784,1).astype(numpy.float32)
@@ -235,13 +246,7 @@ for epoch in range(1):
 
     #backward
 
-    for j in range(len(n2)):
-      if j == label_train[i]:
-        outputLoss[j] = 1 - n2[j]
-      else:
-        outputLoss[j] = 0 - n2[j]
-
-    cuda.memcpy_htod(outputLoss_gpu,outputLoss)
+    get_output_loss(outputLoss_gpu, n2_gpu, numpy.int32(label_train[i]), block=(10,1,1))
     
     array_mulitply(outputLossInput_gpu,outputLoss_gpu,n2input_gpu,block=(len(outputLoss),1,1))
 
