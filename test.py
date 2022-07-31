@@ -253,12 +253,10 @@ for epoch in range(1):
     n = 1
     n_NP = numpy.int32(n)
     multiply_them(w1grads_gpu, outputLossInput_gpu, n1_gpu, n_NP, block=(len(n1),len(outputLoss),1))
-    cuda.memcpy_dtoh(w1grads,w1grads_gpu)
 
     #optimize
 
     add_them(w1_gpu, w1grads_gpu,block=(40,1,1))
-    cuda.memcpy_dtoh(w1,w1_gpu)
 
 
   
@@ -282,9 +280,6 @@ for epoch in range(1):
     
   print("--- %s seconds ---" % (time.time() - start_time))
   print("correct = ",(correct/len(img_train)))
-
-  cuda.memcpy_htod(w0_gpu, w0)
-  cuda.memcpy_htod(w1_gpu, w1)
 
 # --- testing ---
 
