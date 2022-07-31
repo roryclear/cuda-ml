@@ -279,8 +279,6 @@ for epoch in range(1):
         w0[x][y] -= w0grads[x][y] * learningRate
 
     '''
-    w1grads = numpy.zeros_like(w1)    
-    #w0grads = numpy.zeros_like(w0)
     
   print("--- %s seconds ---" % (time.time() - start_time))
   print("correct = ",(correct/len(img_train)))
