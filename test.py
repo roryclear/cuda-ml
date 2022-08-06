@@ -212,6 +212,9 @@ w1grads = numpy.zeros_like(w1)
 w1grads_gpu = cuda.mem_alloc(w1grads.nbytes)
 cuda.memcpy_htod(w1grads_gpu,w1grads)
 
+w0grads_gpu = cuda.mem_alloc(w0grads.nbytes)
+cuda.memcpy_htod(w0grads_gpu,w0grads)
+
 outputLoss = numpy.zeros((10),dtype=numpy.float32)
 outputLoss_gpu = cuda.mem_alloc(outputLoss.nbytes)
 outputLossInput = numpy.zeros_like(outputLoss) #outputLoss * input
