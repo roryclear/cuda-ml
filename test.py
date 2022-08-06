@@ -257,29 +257,22 @@ for epoch in range(1):
     n_NP = numpy.int32(n)
     multiply_them(w1grads_gpu, outputLossInput_gpu, n1_gpu, n_NP, block=(len(n1),len(outputLoss),1))
 
+    #backward first weights ???
+    '''
+    cuda.memcpy_dtoh(w1, w1_gpu)
+    cuda.memcpy_dtoh(w1grads, w1grads_gpu)
+    totalErrors = numpy.zeros((len(n1)),dtype=numpy.float32)
+    for x in range(len(w0)):
+      for n in range(len(n2)):
+        totalErrors[x] += w1[n][x] * w1grads[n][x] / len(n2)
+
+    for y in range(len(w0[0])):
+      for x in range(len(w0)):
+        w0[x][y] += totalErrors[x] * (n1[x] * (1 - n1[x])) * n0[y] #BATCH SIZE = 1 ATM !!
+    '''  
     #optimize
 
     add_them(w1_gpu, w1grads_gpu,block=(40,1,1))
-
-
-  
-    #backward first weights
-    '''
-    for y in range(len(w0[0])):
-      for x in range(len(w0)):
-        totalError = 0
-        input = n1input[x]
-        for n in range(len(n2)):
-          totalError += (w1[n][x] * w1grads[n][x]) / len(n2)
-        totalError = totalError * input * n0[y]
-        w0grads[x][y] += totalError
-
-    #optimize first weights
-    for y in range(len(w0grads[0])):
-      for x in range(len(w0grads)):
-        w0[x][y] -= w0grads[x][y] * learningRate
-
-    '''
     
   print("--- %s seconds ---" % (time.time() - start_time))
   print("correct = ",(correct/len(img_train)))
