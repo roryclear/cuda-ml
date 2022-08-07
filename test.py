@@ -56,7 +56,7 @@ __global__ void multiply_them(float *d, float *a, float *b, int n)
 __global__ void add_them(float *d, float *a)
 {
   int i = threadIdx.x + (blockDim.x * blockIdx.x);
-  d[i] = -a[i] + d[i];
+  d[i] = (-a[i] * 0.1) + d[i];
 }
 
 __global__ void array_mulitply_minus(float *d, float *a, float *b)
@@ -260,7 +260,7 @@ for epoch in range(1):
     multiply_them(w1grads_gpu, outputLossInput_gpu, n1_gpu, n_NP, block=(len(n1),len(outputLoss),1))
 
     #backward first weights ???
-    
+    '''
     cuda.memcpy_dtoh(w1, w1_gpu)
     cuda.memcpy_dtoh(w1grads, w1grads_gpu)
     totalErrors = numpy.zeros((len(n1)),dtype=numpy.float32)
@@ -272,11 +272,13 @@ for epoch in range(1):
       for x in range(len(w0)):
         w0grads[x][y] = totalErrors[x] * (n1[x] * (1 - n1[x])) * n0[y] * learningRate #BATCH SIZE = 1 ATM !!
         #w0[x][y] -= w0grads[x][y]
+
+    cuda.memcpy_htod(w0grads_gpu,w0grads)
+    add_them(w0_gpu,w0grads_gpu,block=(784,1,1),grid=(4,1))
+    '''
     #optimize
 
     add_them(w1_gpu, w1grads_gpu,block=(40,1,1))
-    cuda.memcpy_htod(w0grads_gpu,w0grads)
-    add_them(w0_gpu,w0grads_gpu,block=(784,1,1),grid=(4,1))
     #cuda.memcpy_htod(w0_gpu, w0)
 
   print("--- %s seconds ---" % (time.time() - start_time))
