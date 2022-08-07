@@ -207,9 +207,13 @@ cuda.memcpy_htod(n2input_gpu,n2input)
 
 w0grads = numpy.zeros_like(w0)
 w1grads = numpy.zeros_like(w1)
+w1Loss = numpy.zeros_like(w1)
 
 w1grads_gpu = cuda.mem_alloc(w1grads.nbytes)
 cuda.memcpy_htod(w1grads_gpu,w1grads)
+
+w1Loss_gpu = cuda.mem_alloc(w1Loss.nbytes)
+cuda.memcpy_htod(w1Loss_gpu,w1Loss)
 
 w0grads_gpu = cuda.mem_alloc(w0grads.nbytes)
 cuda.memcpy_htod(w0grads_gpu,w0grads)
@@ -261,12 +265,14 @@ for epoch in range(1):
 
     #backward first weights ???
     
-    cuda.memcpy_dtoh(w1, w1_gpu)
-    cuda.memcpy_dtoh(w1grads, w1grads_gpu)
+    #cuda.memcpy_dtoh(w1, w1_gpu)
+    #cuda.memcpy_dtoh(w1grads, w1grads_gpu)
     totalErrors = numpy.zeros((len(n1)),dtype=numpy.float32)
+    array_mulitply(w1Loss_gpu,w1_gpu,w1grads_gpu,block=(40,1,1))
+    cuda.memcpy_dtoh(w1Loss,w1Loss_gpu)
     for x in range(len(w0)):
       for n in range(len(n2)):
-        totalErrors[x] += w1[n][x] * w1grads[n][x] / len(n2)
+        totalErrors[x] += w1Loss[n][x] / len(n2)
       #print("totalError = ",totalErrors[x])
     for y in range(len(w0[0])):
       for x in range(len(w0)):
