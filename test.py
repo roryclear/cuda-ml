@@ -21,7 +21,6 @@ class Net():
         nrA = len(w0) # number of rows in A
         ncB = 1 # number of cols in B
 
-        #matrixMul(d_gpu,a_gpu,b_gpu,block=(4,4,1))
         multiply_them(n1_gpu, w0_gpu, img_gpu, n_NP, block=(ncB,nrA,1))
         sigmoid(n1_gpu,block=(len(n1),1,1))
 
@@ -60,11 +59,18 @@ __global__ void add_them(float *d, float *a)
   d[i] = -a[i] + d[i];
 }
 
-__global__ void array_mulitply(float *d, float *a, float *b)
+__global__ void array_mulitply_minus(float *d, float *a, float *b)
 {
   const int i = threadIdx.x;
   d[i] = -a[i] * b[i];
 }
+
+__global__ void array_mulitply(float *d, float *a, float *b)
+{
+  const int i = threadIdx.x + (blockDim.x * blockIdx.x);
+  d[i] = a[i] * b[i];
+}
+
 
 __global__ void get_output_loss(float *d, float *o, int a)
 {
@@ -91,13 +97,6 @@ __global__ void relu(float *a)
   }
 }
 
-__global__ void matrixMul(int *d, int *a, int *b)
-{
-  const int i = threadIdx.x;
-  const int j = threadIdx.y;
-  d[i] = threadIdx.x;
-}
-
 __global__ void sigmoid(float *d)
 {
   const int i = threadIdx.x;
@@ -118,10 +117,10 @@ MAX_THREADS_PER_BLOCK = \
 multiply_them = mod.get_function("multiply_them")
 add_them = mod.get_function("add_them")
 minus_them = mod.get_function("minus_them")
-matrixMul = mod.get_function("matrixMul")
 relu = mod.get_function("relu")
 sigmoid = mod.get_function("sigmoid")
 der_sigmoid = mod.get_function("der_sigmoid")
+array_mulitply_minus = mod.get_function("array_mulitply_minus")
 array_mulitply = mod.get_function("array_mulitply")
 get_output_loss = mod.get_function("get_output_loss")
 
@@ -221,6 +220,10 @@ outputLossInput = numpy.zeros_like(outputLoss) #outputLoss * input
 outputLossInput_gpu = cuda.mem_alloc(outputLossInput.nbytes)
 cuda.memcpy_htod(outputLossInput_gpu,outputLossInput)
 
+totalErrors = numpy.zeros((len(n1)),dtype=numpy.float32)
+totalErrors_gpu = cuda.mem_alloc(totalErrors.nbytes)
+cuda.memcpy_htod(totalErrors_gpu,totalErrors)
+
 img_gpu = cuda.mem_alloc(img_train[0].nbytes)
 
 learningRate = 0.1
@@ -250,7 +253,7 @@ for epoch in range(1):
 
     get_output_loss(outputLoss_gpu, n2_gpu, numpy.int32(label_train[i]), block=(10,1,1))
     
-    array_mulitply(outputLossInput_gpu,outputLoss_gpu,n2input_gpu,block=(len(outputLoss),1,1))
+    array_mulitply_minus(outputLossInput_gpu,outputLoss_gpu,n2input_gpu,block=(len(outputLoss),1,1))
 
     n = 1
     n_NP = numpy.int32(n)
@@ -323,7 +326,6 @@ n_NP = numpy.int32(n)
 nrA = 3 # number of rows in A
 ncB = 1 # number of cols in B
 
-#matrixMul(d_gpu,a_gpu,b_gpu,block=(4,4,1))
 multiply_them(d_gpu, a_gpu, b_gpu, n_NP, block=(ncB,nrA,1))
 
 cuda.memcpy_dtoh(d, d_gpu)
