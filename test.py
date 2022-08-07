@@ -56,7 +56,7 @@ __global__ void multiply_them(float *d, float *a, float *b, int n)
 
 __global__ void add_them(float *d, float *a)
 {
-  int i = threadIdx.x;
+  int i = threadIdx.x + (blockDim.x * blockIdx.x);
   d[i] = -a[i] + d[i];
 }
 
@@ -267,11 +267,14 @@ for epoch in range(1):
       #print("totalError = ",totalErrors[x])
     for y in range(len(w0[0])):
       for x in range(len(w0)):
-        w0[x][y] -= totalErrors[x] * (n1[x] * (1 - n1[x])) * n0[y] * learningRate #BATCH SIZE = 1 ATM !!
+        w0grads[x][y] = totalErrors[x] * (n1[x] * (1 - n1[x])) * n0[y] * learningRate #BATCH SIZE = 1 ATM !!
+        #w0[x][y] -= w0grads[x][y]
     #optimize
 
     add_them(w1_gpu, w1grads_gpu,block=(40,1,1))
-    cuda.memcpy_htod(w0_gpu, w0)
+    cuda.memcpy_htod(w0grads_gpu,w0grads)
+    add_them(w0_gpu,w0grads_gpu,block=(784,1,1),grid=(4,1))
+    #cuda.memcpy_htod(w0_gpu, w0)
 
   print("--- %s seconds ---" % (time.time() - start_time))
   print("correct = ",(correct/len(img_train)))
