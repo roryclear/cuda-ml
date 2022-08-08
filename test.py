@@ -242,6 +242,8 @@ cuda.memcpy_htod(totalErrors_gpu,totalErrors)
 
 img_gpu = cuda.mem_alloc(img_train[0].nbytes)
 
+totalErrors = numpy.zeros((len(n1)),dtype=numpy.float32)
+
 learningRate = 0.1
 for epoch in range(1):
 
@@ -277,10 +279,10 @@ for epoch in range(1):
 
     #backward first weights ???
     
-    totalErrors = numpy.zeros((len(n1)),dtype=numpy.float32)
     array_mulitply(w1Loss_gpu,w1_gpu,w1grads_gpu,block=(40,1,1))
 
     get_node_loss(totalErrors_gpu,w1Loss_gpu,numpy.int32(10),numpy.int32(len(n2)),block=(4,1,1))
+
     cuda.memcpy_dtoh(totalErrors,totalErrors_gpu)
 
     for y in range(len(w0[0])):
