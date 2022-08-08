@@ -82,6 +82,17 @@ __global__ void get_output_loss(float *d, float *o, int a)
   }
 }
 
+__global__ void get_node_loss(float *d, float *a, int n, int s)
+{
+  int i = threadIdx.x;
+  float t = 0;
+  for(int j = 0; j < n; j++) 
+  {
+    t += a[i + j*blockDim.x];
+  } 
+  d[i] = t / s;
+}
+
 __global__ void minus_them(float *d, float *a)
 {
   const int i = threadIdx.x;
@@ -123,6 +134,7 @@ der_sigmoid = mod.get_function("der_sigmoid")
 array_mulitply_minus = mod.get_function("array_mulitply_minus")
 array_mulitply = mod.get_function("array_mulitply")
 get_output_loss = mod.get_function("get_output_loss")
+get_node_loss = mod.get_function("get_node_loss")
 
 # --- testing cuda matrix multiplication ---
 input = numpy.random.rand(784,1).astype(numpy.float32)
@@ -265,15 +277,12 @@ for epoch in range(1):
 
     #backward first weights ???
     
-    #cuda.memcpy_dtoh(w1, w1_gpu)
-    #cuda.memcpy_dtoh(w1grads, w1grads_gpu)
     totalErrors = numpy.zeros((len(n1)),dtype=numpy.float32)
     array_mulitply(w1Loss_gpu,w1_gpu,w1grads_gpu,block=(40,1,1))
-    cuda.memcpy_dtoh(w1Loss,w1Loss_gpu)
-    for x in range(len(w0)):
-      for n in range(len(n2)):
-        totalErrors[x] += w1Loss[n][x] / len(n2)
-      #print("totalError = ",totalErrors[x])
+
+    get_node_loss(totalErrors_gpu,w1Loss_gpu,numpy.int32(10),numpy.int32(len(n2)),block=(4,1,1))
+    cuda.memcpy_dtoh(totalErrors,totalErrors_gpu)
+
     for y in range(len(w0[0])):
       for x in range(len(w0)):
         w0grads[x][y] = totalErrors[x] * (n1[x] * (1 - n1[x])) * n0[y]
@@ -294,7 +303,6 @@ correct = 0
 start_time = time.time()
 for i in range(len(img_test)):
   testImg = img_test[i]
-
   testImg32 = testImg.astype(numpy.float32)
   
   img_gpu = cuda.mem_alloc(testImg32.nbytes)
