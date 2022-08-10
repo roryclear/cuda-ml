@@ -53,10 +53,10 @@ __global__ void multiply_them(float *d, float *a, float *b, int n)
   d[(row * blockDim.x) + col] = t;
 }
 
-__global__ void optimize(float *d, float *a)
+__global__ void optimize(float *d, float *a, float lr)
 {
   int i = threadIdx.x + (blockDim.x * blockIdx.x);
-  d[i] = (-a[i]) + d[i];
+  d[i] = (lr * -a[i]) + d[i];
 }
 
 __global__ void array_mulitply_minus(float *d, float *a, float *b)
@@ -253,7 +253,7 @@ cuda.memcpy_htod(n0_gpu,n0)
 
 totalErrors = numpy.zeros((len(n1)),dtype=numpy.float32)
 
-learningRate = 0.1
+learningRate = numpy.float32(0.1)
 for epoch in range(1):
 
   correct = 0
@@ -299,9 +299,9 @@ for epoch in range(1):
 
     #optimize
   
-    optimize(w0_gpu,w0grads_gpu,block=(784,1,1),grid=(4,1))
+    optimize(w0_gpu,w0grads_gpu,learningRate,block=(784,1,1),grid=(4,1))
 
-    optimize(w1_gpu, w1grads_gpu,block=(40,1,1))
+    optimize(w1_gpu, w1grads_gpu,learningRate,block=(40,1,1))
 
   print("--- %s seconds ---" % (time.time() - start_time))
   print("correct = ",(correct/len(img_train)))
