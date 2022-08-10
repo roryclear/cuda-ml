@@ -21,7 +21,7 @@ class Net():
         nrA = len(w0) # number of rows in A
         ncB = 1 # number of cols in B
 
-        multiply_them(n1_gpu, w0_gpu, img_gpu, n_NP, block=(ncB,nrA,1))
+        multiply_them(n1_gpu, w0_gpu, n0_gpu, n_NP, block=(ncB,nrA,1))
         sigmoid(n1_gpu,block=(len(n1),1,1))
 
         n = len(w1[0])
@@ -250,7 +250,6 @@ n0 = numpy.zeros((784),dtype=numpy.float32)
 n0_gpu = cuda.mem_alloc(n0.nbytes)
 cuda.memcpy_htod(n0_gpu,n0)
 
-img_gpu = cuda.mem_alloc(img_train[0].nbytes)
 
 totalErrors = numpy.zeros((len(n1)),dtype=numpy.float32)
 
@@ -265,11 +264,11 @@ for epoch in range(1):
 
     n0 = trainImg32.flatten()
 
-    cuda.memcpy_htod(img_gpu,trainImg32)
+    cuda.memcpy_htod(n0_gpu,trainImg32)
 
     #last weights
 
-    testNet.forward(img_gpu)
+    testNet.forward(n0_gpu)
     der_sigmoid(n1input_gpu,n1_gpu,block=(4,1,1))
     der_sigmoid(n2input_gpu,n2_gpu,block=(10,1,1))
 
@@ -322,10 +321,10 @@ for i in range(len(img_test)):
   testImg = img_test[i]
   testImg32 = testImg.astype(numpy.float32)
   
-  img_gpu = cuda.mem_alloc(testImg32.nbytes)
-  cuda.memcpy_htod(img_gpu, testImg32)
+  n0_gpu = cuda.mem_alloc(testImg32.nbytes)
+  cuda.memcpy_htod(n0_gpu, testImg32)
 
-  testNet.forward(img_gpu)
+  testNet.forward(n0_gpu)
 
   guess = n2.argmax()
   if guess == label_test[i]:
