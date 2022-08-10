@@ -98,6 +98,18 @@ __global__ void get_grads(float *d, float *a, float *b, float *c)
   d[threadIdx.x + blockDim.x * blockIdx.x] = a[blockIdx.x] * b[blockIdx.x] * c[threadIdx.x]; 
 }
 
+__global__ void check_answer(int *a, float *output, int answer)
+{
+  for(int i = 0; i < 10; i++)
+  {
+    if(output[i] > output[answer])
+    {
+      return;
+    }
+  }
+  a[0] = a[0] + 1;
+}
+
 __global__ void minus_them(float *d, float *a)
 {
   const int i = threadIdx.x;
@@ -141,6 +153,7 @@ array_mulitply = mod.get_function("array_mulitply")
 get_output_loss = mod.get_function("get_output_loss")
 get_node_loss = mod.get_function("get_node_loss")
 get_grads = mod.get_function("get_grads")
+check_answer = mod.get_function("check_answer")
 
 # --- testing cuda matrix multiplication ---
 input = numpy.random.rand(784,1).astype(numpy.float32)
@@ -250,6 +263,10 @@ n0 = numpy.zeros((784),dtype=numpy.float32)
 n0_gpu = cuda.mem_alloc(n0.nbytes)
 cuda.memcpy_htod(n0_gpu,n0)
 
+training_correct = numpy.zeros((1),dtype=numpy.int32)
+training_correct_gpu = cuda.mem_alloc(training_correct.nbytes)
+cuda.memcpy_htod(training_correct_gpu,training_correct)
+
 
 totalErrors = numpy.zeros((len(n1)),dtype=numpy.float32)
 
@@ -272,9 +289,7 @@ for epoch in range(1):
     der_sigmoid(n1input_gpu,n1_gpu,block=(4,1,1))
     der_sigmoid(n2input_gpu,n2_gpu,block=(10,1,1))
 
-    guess = n2.argmax()
-    if guess == label_train[i]:
-      correct+=1
+    check_answer(training_correct_gpu, n2_gpu, numpy.int32(label_train[i]),block=(1,1,1))
 
     #backward
 
@@ -302,6 +317,8 @@ for epoch in range(1):
 
   print("--- %s seconds ---" % (time.time() - start_time))
   print("correct = ",(correct/len(img_train)))
+  cuda.memcpy_dtoh(training_correct,training_correct_gpu)
+  print("correct (GPU) = ",(training_correct[0]/len(img_train)))
 
 # --- testing ---
 
