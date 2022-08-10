@@ -93,6 +93,11 @@ __global__ void get_node_loss(float *d, float *a, int n, int s)
   d[i] = t / s;
 }
 
+__global__ void get_grads(float *d, float *a, float *b, float *c)
+{
+  d[threadIdx.x + blockDim.x * blockIdx.x] = a[blockIdx.x] * b[blockIdx.x] * c[threadIdx.x]; 
+}
+
 __global__ void minus_them(float *d, float *a)
 {
   const int i = threadIdx.x;
@@ -135,6 +140,7 @@ array_mulitply_minus = mod.get_function("array_mulitply_minus")
 array_mulitply = mod.get_function("array_mulitply")
 get_output_loss = mod.get_function("get_output_loss")
 get_node_loss = mod.get_function("get_node_loss")
+get_grads = mod.get_function("get_grads")
 
 # --- testing cuda matrix multiplication ---
 input = numpy.random.rand(784,1).astype(numpy.float32)
@@ -240,6 +246,10 @@ totalErrors = numpy.zeros((len(n1)),dtype=numpy.float32)
 totalErrors_gpu = cuda.mem_alloc(totalErrors.nbytes)
 cuda.memcpy_htod(totalErrors_gpu,totalErrors)
 
+n0 = numpy.zeros((784),dtype=numpy.float32)
+n0_gpu = cuda.mem_alloc(n0.nbytes)
+cuda.memcpy_htod(n0_gpu,n0)
+
 img_gpu = cuda.mem_alloc(img_train[0].nbytes)
 
 totalErrors = numpy.zeros((len(n1)),dtype=numpy.float32)
@@ -284,15 +294,20 @@ for epoch in range(1):
     get_node_loss(totalErrors_gpu,w1Loss_gpu,numpy.int32(10),numpy.int32(len(n2)),block=(4,1,1))
 
     cuda.memcpy_dtoh(totalErrors,totalErrors_gpu)
+    cuda.memcpy_htod(n0_gpu,n0)
 
-    for y in range(len(w0[0])):
-      for x in range(len(w0)):
-        w0grads[x][y] = totalErrors[x] * (n1[x] * (1 - n1[x])) * n0[y]
+    get_grads(w0grads_gpu,totalErrors_gpu,n1input_gpu,n0_gpu,block=(784,1,1),grid=(4,1))
 
-    cuda.memcpy_htod(w0grads_gpu,w0grads)
     add_them(w0_gpu,w0grads_gpu,block=(784,1,1),grid=(4,1))
-
     #optimize
+
+    #cuda.memcpy_dtoh(w0grads,w0grads_gpu)
+
+    #print("\nw0grads = ",w0grads)
+    #print("\n")
+
+    #print("\ntotalErrors = ",totalErrors)
+    #print("\n")
 
     add_them(w1_gpu, w1grads_gpu,block=(40,1,1))
 
