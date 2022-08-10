@@ -32,9 +32,6 @@ class Net():
 
         multiply_them(n2_gpu, w1_gpu, n1_gpu, n_NP, block=(ncB,nrA,1))
         sigmoid(n2_gpu,block=(len(n2),1,1))
-
-        cuda.memcpy_dtoh(n2,n2_gpu)
-        cuda.memcpy_dtoh(n1,n1_gpu)
         return 0
 
 print("ffs")
@@ -267,6 +264,9 @@ training_correct = numpy.zeros((1),dtype=numpy.int32)
 training_correct_gpu = cuda.mem_alloc(training_correct.nbytes)
 cuda.memcpy_htod(training_correct_gpu,training_correct)
 
+test_correct = numpy.zeros((1),dtype=numpy.int32)
+test_correct_gpu = cuda.mem_alloc(test_correct.nbytes)
+cuda.memcpy_htod(test_correct_gpu,test_correct)
 
 totalErrors = numpy.zeros((len(n1)),dtype=numpy.float32)
 
@@ -316,7 +316,6 @@ for epoch in range(1):
     optimize(w1_gpu, w1grads_gpu,learningRate,block=(40,1,1))
 
   print("--- %s seconds ---" % (time.time() - start_time))
-  print("correct = ",(correct/len(img_train)))
   cuda.memcpy_dtoh(training_correct,training_correct_gpu)
   print("correct (GPU) = ",(training_correct[0]/len(img_train)))
 
@@ -333,13 +332,12 @@ for i in range(len(img_test)):
 
   testNet.forward(n0_gpu)
 
-  guess = n2.argmax()
-  if guess == label_test[i]:
-    correct +=1
+  check_answer(test_correct_gpu, n2_gpu, numpy.int32(label_test[i]),block=(1,1,1))
   #guess = output.index(max(output))
   #print("guess = ",guess)
 print("--- %s seconds ---" % (time.time() - start_time))
-print("test dataset: correct = ",(correct/len(img_test)))
+cuda.memcpy_dtoh(test_correct,test_correct_gpu)
+print("test dataset: correct = ",(test_correct[0]/len(img_test)))
 
 # --------
 
