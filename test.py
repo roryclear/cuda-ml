@@ -292,9 +292,6 @@ for epoch in range(1):
 
     get_node_loss(totalErrors_gpu,w1Loss_gpu,numpy.int32(10),numpy.int32(len(n2)),block=(4,1,1))
 
-    cuda.memcpy_dtoh(totalErrors,totalErrors_gpu)
-    cuda.memcpy_htod(n0_gpu,n0)
-
     get_grads(w0grads_gpu,totalErrors_gpu,n1input_gpu,n0_gpu,block=(784,1,1),grid=(4,1))
 
     #optimize
