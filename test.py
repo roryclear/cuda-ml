@@ -53,7 +53,7 @@ __global__ void multiply_them(float *d, float *a, float *b, int n)
   d[(row * blockDim.x) + col] = t;
 }
 
-__global__ void add_them(float *d, float *a)
+__global__ void optimize(float *d, float *a)
 {
   int i = threadIdx.x + (blockDim.x * blockIdx.x);
   d[i] = (-a[i]) + d[i];
@@ -131,7 +131,7 @@ MAX_THREADS_PER_BLOCK = \
     cuda.Device(0).get_attribute(pycuda._driver.device_attribute.MAX_THREADS_PER_BLOCK)
 
 multiply_them = mod.get_function("multiply_them")
-add_them = mod.get_function("add_them")
+optimize = mod.get_function("optimize")
 minus_them = mod.get_function("minus_them")
 relu = mod.get_function("relu")
 sigmoid = mod.get_function("sigmoid")
@@ -297,18 +297,11 @@ for epoch in range(1):
 
     get_grads(w0grads_gpu,totalErrors_gpu,n1input_gpu,n0_gpu,block=(784,1,1),grid=(4,1))
 
-    add_them(w0_gpu,w0grads_gpu,block=(784,1,1),grid=(4,1))
     #optimize
+  
+    optimize(w0_gpu,w0grads_gpu,block=(784,1,1),grid=(4,1))
 
-    #cuda.memcpy_dtoh(w0grads,w0grads_gpu)
-
-    #print("\nw0grads = ",w0grads)
-    #print("\n")
-
-    #print("\ntotalErrors = ",totalErrors)
-    #print("\n")
-
-    add_them(w1_gpu, w1grads_gpu,block=(40,1,1))
+    optimize(w1_gpu, w1grads_gpu,block=(40,1,1))
 
   print("--- %s seconds ---" % (time.time() - start_time))
   print("correct = ",(correct/len(img_train)))
