@@ -300,9 +300,9 @@ for epoch in range(1):
 
     #backward first weights ???
     
-    array_mulitply(w1Loss_gpu,w1_gpu,w1grads_gpu,block=(40,1,1))
+    array_mulitply(w1Loss_gpu,w1_gpu,w1grads_gpu,block=((len(n1) * len(n2)),1,1))
 
-    get_node_loss(totalErrors_gpu,w1Loss_gpu,numpy.int32(10),numpy.int32(len(n2)),block=(len(n1),1,1))
+    get_node_loss(totalErrors_gpu,w1Loss_gpu,numpy.int32(len(n2)),numpy.int32(len(n2)),block=(len(n1),1,1))
 
     get_grads(w0grads_gpu,totalErrors_gpu,n1input_gpu,n0_gpu,block=(len(n0),1,1),grid=(len(n1),1))
 
