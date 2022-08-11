@@ -283,14 +283,14 @@ for epoch in range(1):
     #last weights
 
     testNet.forward(n0_gpu)
-    der_sigmoid(n1input_gpu,n1_gpu,block=(4,1,1))
-    der_sigmoid(n2input_gpu,n2_gpu,block=(10,1,1))
+    der_sigmoid(n1input_gpu,n1_gpu,block=(len(n1),1,1))
+    der_sigmoid(n2input_gpu,n2_gpu,block=(len(n2),1,1))
 
     check_answer(training_correct_gpu, n2_gpu, numpy.int32(label_train[i]),block=(1,1,1))
 
     #backward
 
-    get_output_loss(outputLoss_gpu, n2_gpu, numpy.int32(label_train[i]), block=(10,1,1))
+    get_output_loss(outputLoss_gpu, n2_gpu, numpy.int32(label_train[i]), block=(len(n2),1,1))
     
     array_mulitply_minus(outputLossInput_gpu,outputLoss_gpu,n2input_gpu,block=(len(outputLoss),1,1))
 
@@ -302,15 +302,15 @@ for epoch in range(1):
     
     array_mulitply(w1Loss_gpu,w1_gpu,w1grads_gpu,block=(40,1,1))
 
-    get_node_loss(totalErrors_gpu,w1Loss_gpu,numpy.int32(10),numpy.int32(len(n2)),block=(4,1,1))
+    get_node_loss(totalErrors_gpu,w1Loss_gpu,numpy.int32(10),numpy.int32(len(n2)),block=(len(n1),1,1))
 
-    get_grads(w0grads_gpu,totalErrors_gpu,n1input_gpu,n0_gpu,block=(784,1,1),grid=(4,1))
+    get_grads(w0grads_gpu,totalErrors_gpu,n1input_gpu,n0_gpu,block=(len(n0),1,1),grid=(len(n1),1))
 
     #optimize
   
-    optimize(w0_gpu,w0grads_gpu,learningRate,block=(784,1,1),grid=(4,1))
+    optimize(w0_gpu,w0grads_gpu,learningRate,block=(len(n0),1,1),grid=(len(n1),1))
 
-    optimize(w1_gpu, w1grads_gpu,learningRate,block=(40,1,1))
+    optimize(w1_gpu, w1grads_gpu,learningRate,block=(len(n1),1,1),grid=(len(n2),1))
 
   print("--- %s seconds ---" % (time.time() - start_time))
   cuda.memcpy_dtoh(training_correct,training_correct_gpu)
