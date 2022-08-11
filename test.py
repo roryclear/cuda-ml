@@ -278,9 +278,6 @@ for epoch in range(1):
   for i in range(len(img_train)):
     trainImg = img_train[i]
     trainImg32 = trainImg.astype(numpy.float32)
-
-    n0 = trainImg32.flatten()
-
     cuda.memcpy_htod(n0_gpu,trainImg32)
 
     #last weights
