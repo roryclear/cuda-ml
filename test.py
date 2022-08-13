@@ -176,20 +176,22 @@ print("nodes gpu = ",nodes)
 
 (img_train, label_train), (img_test, label_test) = keras.datasets.mnist.load_data()
 
+n0size = 784
+n1size = 4
+n2size = 10
+
 img_train = img_train / 255
 img_test = img_test / 255
 
-w0=numpy.empty((4,784)).astype(numpy.float32); w0.fill(1)
-w1=numpy.empty((10,4)).astype(numpy.float32); w1.fill(1)
+w0=numpy.empty((n1size,n0size)).astype(numpy.float32); w0.fill(1)
+w1=numpy.empty((n2size,n1size)).astype(numpy.float32); w1.fill(1)
 
 #weightsFile = "relu-untrained-weights784-4-10.txt"
 #weightsFile = "relu-weights784-4-10.txt"
 weightsFile = "sigmoid-untrained-weights784-4-10.txt"
 #weightsFile = "sigmoid-weights784-4-10.txt"
-
-n0size = 784
-n1size = 4
-n2size = 10
+#weightsFile = "sigmoid-untrained-weights784-16-10.txt"
+#weightsFile = "sigmoid-weights784-16-10.txt"
 
 f = open(weightsFile, "r")
 lines = f.readlines()[1:785]
