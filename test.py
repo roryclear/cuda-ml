@@ -187,6 +187,10 @@ w1=numpy.empty((10,4)).astype(numpy.float32); w1.fill(1)
 weightsFile = "sigmoid-untrained-weights784-4-10.txt"
 #weightsFile = "sigmoid-weights784-4-10.txt"
 
+n0size = 784
+n1size = 4
+n2size = 10
+
 f = open(weightsFile, "r")
 lines = f.readlines()[1:785]
 i = 0
@@ -216,19 +220,19 @@ cuda.memcpy_htod(w0_gpu, w0)
 w1_gpu = cuda.mem_alloc(w1.nbytes)
 cuda.memcpy_htod(w1_gpu, w1)
 
-n1 = numpy.zeros((4, 1),dtype=numpy.float32)
+n1 = numpy.zeros((n1size, 1),dtype=numpy.float32)
 n1_gpu = cuda.mem_alloc(n1.nbytes)
 cuda.memcpy_htod(n1_gpu,n1)
 
-n1input = numpy.zeros((4, 1),dtype=numpy.float32)
+n1input = numpy.zeros((n1size, 1),dtype=numpy.float32)
 n1input_gpu = cuda.mem_alloc(n1input.nbytes)
 cuda.memcpy_htod(n1input_gpu,n1input)
 
-n2 = numpy.zeros((10, 1),dtype=numpy.float32)
+n2 = numpy.zeros((n2size, 1),dtype=numpy.float32)
 n2_gpu = cuda.mem_alloc(n2.nbytes)
 cuda.memcpy_htod(n2_gpu,n2)
 
-n2input = numpy.zeros((10, 1),dtype=numpy.float32)
+n2input = numpy.zeros((n2size, 1),dtype=numpy.float32)
 n2input_gpu = cuda.mem_alloc(n2input.nbytes)
 cuda.memcpy_htod(n2input_gpu,n2input)
 # --- training ---
@@ -246,7 +250,7 @@ cuda.memcpy_htod(w1Loss_gpu,w1Loss)
 w0grads_gpu = cuda.mem_alloc(w0grads.nbytes)
 cuda.memcpy_htod(w0grads_gpu,w0grads)
 
-outputLoss = numpy.zeros((10),dtype=numpy.float32)
+outputLoss = numpy.zeros((len(n2)),dtype=numpy.float32)
 outputLoss_gpu = cuda.mem_alloc(outputLoss.nbytes)
 outputLossInput = numpy.zeros_like(outputLoss) #outputLoss * input
 outputLossInput_gpu = cuda.mem_alloc(outputLossInput.nbytes)
@@ -256,7 +260,7 @@ totalErrors = numpy.zeros((len(n1)),dtype=numpy.float32)
 totalErrors_gpu = cuda.mem_alloc(totalErrors.nbytes)
 cuda.memcpy_htod(totalErrors_gpu,totalErrors)
 
-n0 = numpy.zeros((784),dtype=numpy.float32)
+n0 = numpy.zeros((n0size),dtype=numpy.float32)
 n0_gpu = cuda.mem_alloc(n0.nbytes)
 cuda.memcpy_htod(n0_gpu,n0)
 
