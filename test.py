@@ -4,6 +4,7 @@ import numpy
 import pycuda.autoinit
 import time
 from tensorflow import keras
+from os.path import exists
 
 #pip install pycuda
 #pip install tensorflow
@@ -177,7 +178,7 @@ print("nodes gpu = ",nodes)
 (img_train, label_train), (img_test, label_test) = keras.datasets.mnist.load_data()
 
 n0size = 784
-n1size = 4
+n1size = 16
 n2size = 10
 
 img_train = img_train / 255
@@ -188,30 +189,40 @@ w1=numpy.empty((n2size,n1size)).astype(numpy.float32); w1.fill(1)
 
 #weightsFile = "relu-untrained-weights784-4-10.txt"
 #weightsFile = "relu-weights784-4-10.txt"
-weightsFile = "sigmoid-untrained-weights784-4-10.txt"
+#weightsFile = "sigmoid-untrained-weights784-4-10.txt"
 #weightsFile = "sigmoid-weights784-4-10.txt"
-#weightsFile = "sigmoid-untrained-weights784-16-10.txt"
+weightsFile = "sigmoid-untrained-weights784-16-10.txt"
 #weightsFile = "sigmoid-weights784-16-10.txt"
 
-f = open(weightsFile, "r")
-lines = f.readlines()[1:785]
-i = 0
-for line in lines:
-  line = line.replace("\n","")
-  array = line.split(",")
-  for j in range(len(array)):
-    w0[j][i] = array[j]
-  i+=1
+if exists(weightsFile):
+  f = open(weightsFile, "r")
+  lines = f.readlines()[1:785]
+  i = 0
+  for line in lines:
+    line = line.replace("\n","")
+    array = line.split(",")
+    for j in range(len(array)):
+      w0[j][i] = array[j]
+    i+=1
 
-f = open(weightsFile, "r")
-lines = f.readlines()[785:]
-i = 0
-for line in lines:
-  line = line.replace("\n","")
-  array = line.split(",")
-  for j in range(len(array)):
-    w1[j][i] = array[j]
-  i+=1
+  f = open(weightsFile, "r")
+  lines = f.readlines()[785:]
+  i = 0
+  for line in lines:
+    line = line.replace("\n","")
+    array = line.split(",")
+    for j in range(len(array)):
+      w1[j][i] = array[j]
+    i+=1
+
+else:
+  for a in range(len(w1)):
+    for b in range(len(w1[0])):
+      w1[a][b] = numpy.random.uniform() * (2 / numpy.sqrt(n1size)) - 1 / numpy.sqrt(n1size)
+  for a in range(len(w0)):
+    for b in range(len(w0[0])):
+      w0[a][b] = numpy.random.uniform() * (2 / numpy.sqrt(n0size)) - 1 / numpy.sqrt(n0size)
+
 
 testNet = Net()
 testNet.weights[0] = w0
