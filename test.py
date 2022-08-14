@@ -163,15 +163,15 @@ weights_gpu = cuda.mem_alloc(weights.nbytes)
 cuda.memcpy_htod(weights_gpu, weights)
 
 nodes = numpy.empty((4,1),dtype=numpy.float32); nodes.fill(0)
+nodes2 = numpy.zeros_like(nodes)
 nodes_gpu = cuda.mem_alloc(nodes.nbytes)
 cuda.memcpy_htod(nodes_gpu, nodes)
 
 nodes = numpy.matmul(weights,input)
 multiply_them(nodes_gpu,weights_gpu,input_gpu, numpy.int32(784), block=(1,4,1))
-print("nodes = ",nodes)
-
-cuda.memcpy_dtoh(nodes, nodes_gpu)
-print("nodes gpu = ",nodes)
+cuda.memcpy_dtoh(nodes2, nodes_gpu)
+for i in range(len(nodes)):
+  print(nodes[i], " -> ", nodes2[i])
 
 #---- mnist stuff ---- 
 
