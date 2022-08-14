@@ -187,12 +187,19 @@ img_test = img_test / 255
 w0=numpy.empty((n1size,n0size)).astype(numpy.float32); w0.fill(1)
 w1=numpy.empty((n2size,n1size)).astype(numpy.float32); w1.fill(1)
 
+layers = [784,16,10]
+
 #weightsFile = "relu-untrained-weights784-4-10.txt"
 #weightsFile = "relu-weights784-4-10.txt"
 #weightsFile = "sigmoid-untrained-weights784-4-10.txt"
 #weightsFile = "sigmoid-weights784-4-10.txt"
-weightsFile = "sigmoid-untrained-weights784-16-10.txt"
+#weightsFile = "sigmoid-untrained-weights784-16-10.txt"
+weightsFile = "sigmoid-untrained-weights"
 #weightsFile = "sigmoid-weights784-16-10.txt"
+
+for i in range(len(layers) - 1):
+  weightsFile += str(layers[i]) + "-"
+weightsFile += str(layers[len(layers)-1]) + ".txt"
 
 if exists(weightsFile):
   f = open(weightsFile, "r")
