@@ -177,25 +177,16 @@ print("nodes gpu = ",nodes)
 
 (img_train, label_train), (img_test, label_test) = keras.datasets.mnist.load_data()
 
-n0size = 784
-n1size = 16
-n2size = 10
-
 img_train = img_train / 255
 img_test = img_test / 255
 
-w0=numpy.empty((n1size,n0size)).astype(numpy.float32); w0.fill(1)
-w1=numpy.empty((n2size,n1size)).astype(numpy.float32); w1.fill(1)
-
 layers = [784,16,10]
 
-#weightsFile = "relu-untrained-weights784-4-10.txt"
-#weightsFile = "relu-weights784-4-10.txt"
-#weightsFile = "sigmoid-untrained-weights784-4-10.txt"
-#weightsFile = "sigmoid-weights784-4-10.txt"
-#weightsFile = "sigmoid-untrained-weights784-16-10.txt"
+w0=numpy.empty((layers[1],layers[0])).astype(numpy.float32); w0.fill(1)
+w1=numpy.empty((layers[2],layers[1])).astype(numpy.float32); w1.fill(1)
+
 weightsFile = "sigmoid-untrained-weights"
-#weightsFile = "sigmoid-weights784-16-10.txt"
+#weightsFile = "sigmoid-weights"
 
 for i in range(len(layers) - 1):
   weightsFile += str(layers[i]) + "-"
@@ -225,10 +216,10 @@ if exists(weightsFile):
 else:
   for a in range(len(w1)):
     for b in range(len(w1[0])):
-      w1[a][b] = numpy.random.uniform() * (2 / numpy.sqrt(n1size)) - 1 / numpy.sqrt(n1size)
+      w1[a][b] = numpy.random.uniform() * (2 / numpy.sqrt(layers[1])) - 1 / numpy.sqrt(layers[1])
   for a in range(len(w0)):
     for b in range(len(w0[0])):
-      w0[a][b] = numpy.random.uniform() * (2 / numpy.sqrt(n0size)) - 1 / numpy.sqrt(n0size)
+      w0[a][b] = numpy.random.uniform() * (2 / numpy.sqrt(layers[0])) - 1 / numpy.sqrt(layers[0])
 
 
 testNet = Net()
@@ -240,19 +231,19 @@ cuda.memcpy_htod(w0_gpu, w0)
 w1_gpu = cuda.mem_alloc(w1.nbytes)
 cuda.memcpy_htod(w1_gpu, w1)
 
-n1 = numpy.zeros((n1size, 1),dtype=numpy.float32)
+n1 = numpy.zeros((layers[1], 1),dtype=numpy.float32)
 n1_gpu = cuda.mem_alloc(n1.nbytes)
 cuda.memcpy_htod(n1_gpu,n1)
 
-n1input = numpy.zeros((n1size, 1),dtype=numpy.float32)
+n1input = numpy.zeros((layers[1], 1),dtype=numpy.float32)
 n1input_gpu = cuda.mem_alloc(n1input.nbytes)
 cuda.memcpy_htod(n1input_gpu,n1input)
 
-n2 = numpy.zeros((n2size, 1),dtype=numpy.float32)
+n2 = numpy.zeros((layers[2], 1),dtype=numpy.float32)
 n2_gpu = cuda.mem_alloc(n2.nbytes)
 cuda.memcpy_htod(n2_gpu,n2)
 
-n2input = numpy.zeros((n2size, 1),dtype=numpy.float32)
+n2input = numpy.zeros((layers[2], 1),dtype=numpy.float32)
 n2input_gpu = cuda.mem_alloc(n2input.nbytes)
 cuda.memcpy_htod(n2input_gpu,n2input)
 # --- training ---
@@ -280,7 +271,7 @@ totalErrors = numpy.zeros((len(n1)),dtype=numpy.float32)
 totalErrors_gpu = cuda.mem_alloc(totalErrors.nbytes)
 cuda.memcpy_htod(totalErrors_gpu,totalErrors)
 
-n0 = numpy.zeros((n0size),dtype=numpy.float32)
+n0 = numpy.zeros((layers[0]),dtype=numpy.float32)
 n0_gpu = cuda.mem_alloc(n0.nbytes)
 cuda.memcpy_htod(n0_gpu,n0)
 
