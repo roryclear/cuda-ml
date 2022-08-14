@@ -41,12 +41,12 @@ mod = comp.SourceModule(
     """
 __global__ void multiply_them(float *d, float *a, float *b, int n)
 {
-  int row = blockDim.y * blockIdx.y + threadIdx.y;
-  int col = blockDim.x * blockIdx.x + threadIdx.x;
+  int row = threadIdx.y;
+  int col = threadIdx.x;
 
   float t = 0;
   for(int i = 0; i < n; i++){
-    t += a[(row * n) + i] * b[col + (blockDim.x * i)];
+    t += a[(row * n) + i] * b[col + i];
   }
   d[(row * blockDim.x) + col] = t;
 }
