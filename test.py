@@ -96,6 +96,12 @@ __global__ void get_grads(float *d, float *a, float *b, float *c)
   d[threadIdx.x + blockDim.x * blockIdx.x] = a[blockIdx.x] * b[blockIdx.x] * c[threadIdx.x]; 
 }
 
+__global__ void set_to_zero(int *a)
+{
+  int i = threadIdx.x;
+  a[i] = 0;
+}
+
 __global__ void check_answer(int *a, float *output, int answer)
 {
   for(int i = 0; i < 10; i++)
@@ -152,6 +158,7 @@ get_output_loss = mod.get_function("get_output_loss")
 get_node_loss = mod.get_function("get_node_loss")
 get_grads = mod.get_function("get_grads")
 check_answer = mod.get_function("check_answer")
+set_to_zero = mod.get_function("set_to_zero")
 
 # --- testing cuda matrix multiplication ---
 input = numpy.random.rand(784,1).astype(numpy.float32)
@@ -329,6 +336,7 @@ for epoch in range(1):
 
   print("--- %s seconds ---" % (time.time() - start_time))
   cuda.memcpy_dtoh(training_correct,training_correct_gpu)
+  set_to_zero(training_correct_gpu,block=(1,1,1))
   print("correct (GPU) = ",(training_correct[0]/len(img_train)))
 
 # --- testing ---
