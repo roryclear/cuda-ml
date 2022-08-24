@@ -22,7 +22,7 @@ class Net():
         nrA = len(w0) # number of rows in A
         ncB = 1 # number of cols in B
 
-        multiply_them(n1_gpu, w0_gpu, n0_gpu, n_NP, block=(ncB,nrA,1))
+        multiply_them(n1_gpu, w0_gpu, n0_gpu, n_NP, numpy.int32(ncB), block=(ncB,nrA,1))
         sigmoid(n1_gpu,block=(len(n1),1,1))
 
         n = len(w1[0])
@@ -31,7 +31,7 @@ class Net():
         nrA = len(w1) # number of rows in A
         ncB = 1 # number of cols in B
 
-        multiply_them(n2_gpu, w1_gpu, n1_gpu, n_NP, block=(ncB,nrA,1))
+        multiply_them(n2_gpu, w1_gpu, n1_gpu, n_NP, numpy.int32(ncB), block=(ncB,nrA,1))
         sigmoid(n2_gpu,block=(len(n2),1,1))
         return 0
 
@@ -39,16 +39,16 @@ print("ffs")
 
 mod = comp.SourceModule(
     """
-__global__ void multiply_them(float *d, float *a, float *b, int n)
+__global__ void multiply_them(float *d, float *a, float *b, int ncA, int nrA)
 {
   int row = threadIdx.y;
   int col = threadIdx.x;
 
   float t = 0;
-  for(int i = 0; i < n; i++){
-    t += a[(row * n) + i] * b[col + i];
+  for(int i = 0; i < ncA; i++){
+    t += a[(row * ncA) + i] * b[col + i];
   }
-  d[(row * blockDim.x) + col] = t;
+  d[(row * nrA) + col] = t;
 }
 
 __global__ void optimize(float *d, float *a, float lr)
@@ -175,7 +175,7 @@ nodes_gpu = cuda.mem_alloc(nodes.nbytes)
 cuda.memcpy_htod(nodes_gpu, nodes)
 
 nodes = numpy.matmul(weights,input)
-multiply_them(nodes_gpu,weights_gpu,input_gpu, numpy.int32(784), block=(1,4,1))
+multiply_them(nodes_gpu,weights_gpu,input_gpu, numpy.int32(784), numpy.int32(1), block=(1,4,1))
 cuda.memcpy_dtoh(nodes2, nodes_gpu)
 for i in range(len(nodes)):
   print(nodes[i], " -> ", nodes2[i])
@@ -318,7 +318,7 @@ for epoch in range(1):
 
     n = 1
     n_NP = numpy.int32(n)
-    multiply_them(w1grads_gpu, outputLossInput_gpu, n1_gpu, n_NP, block=(len(n1),len(outputLoss),1))
+    multiply_them(w1grads_gpu, outputLossInput_gpu, n1_gpu, n_NP, numpy.int32(len(n1)), block=(len(n1),len(outputLoss),1))
 
     #backward first weights ???
     
@@ -381,7 +381,7 @@ n_NP = numpy.int32(n)
 nrA = 3 # number of rows in A
 ncB = 1 # number of cols in B
 
-multiply_them(d_gpu, a_gpu, b_gpu, n_NP, block=(ncB,nrA,1))
+multiply_them(d_gpu, a_gpu, b_gpu, n_NP, numpy.int32(ncB), block=(ncB,nrA,1))
 
 cuda.memcpy_dtoh(d, d_gpu)
 for i in range(len(d)):
