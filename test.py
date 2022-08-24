@@ -19,19 +19,23 @@ class Net():
         n = len(w0[0]) # number of columns in A / number of rows in B
         n_NP = numpy.int32(n)
 
-        nrA = len(w0) # number of rows in A
-        ncB = 1 # number of cols in B
+        bx = 1 # number of cols in B
+        by = len(w0) # number of rows in A
+        gx = 1
+        gy =1
 
-        multiply_them(n1_gpu, w0_gpu, n0_gpu, n_NP, numpy.int32(ncB), block=(ncB,nrA,1), grid=(1,1))
+        multiply_them(n1_gpu, w0_gpu, n0_gpu, n_NP, numpy.int32(bx), block=(bx,by,1), grid=(gx,gy))
         sigmoid(n1_gpu,block=(len(n1),1,1))
 
         n = len(w1[0])
         n_NP = numpy.int32(n)
 
-        nrA = len(w1) # number of rows in A
-        ncB = 1 # number of cols in B
+        bx = 1 # number of cols in B
+        by = len(w1) # number of rows in A
+        gx = 1
+        gy
 
-        multiply_them(n2_gpu, w1_gpu, n1_gpu, n_NP, numpy.int32(ncB), block=(ncB,nrA,1), grid=(1,1))
+        multiply_them(n2_gpu, w1_gpu, n1_gpu, n_NP, numpy.int32(bx), block=(bx,by,1), grid=(gx,gy))
         sigmoid(n2_gpu,block=(len(n2),1,1))
         return 0
 
@@ -318,7 +322,13 @@ for epoch in range(1):
 
     n = 1
     n_NP = numpy.int32(n)
-    multiply_them(w1grads_gpu, outputLossInput_gpu, n1_gpu, n_NP, numpy.int32(len(n1)), block=(len(n1),len(outputLoss),1), grid=(1,1))
+
+    bx = len(n1)
+    by = len(outputLoss)
+    gx = 1
+    gy = 1
+
+    multiply_them(w1grads_gpu, outputLossInput_gpu, n1_gpu, n_NP, numpy.int32(bx), block=(bx,by,1), grid=(gx,gy))
 
     #backward first weights ???
     
@@ -378,10 +388,12 @@ cuda.memcpy_htod(d_gpu, d)
 n = 5
 n_NP = numpy.int32(n)
 
-nrA = 3 # number of rows in A
-ncB = 1 # number of cols in B
+bx = 1 # number of cols in B
+by = 3 # number of rows in A
+gx = 1
+gy = 1
 
-multiply_them(d_gpu, a_gpu, b_gpu, n_NP, numpy.int32(ncB), block=(ncB,nrA,1), grid=(1,1))
+multiply_them(d_gpu, a_gpu, b_gpu, n_NP, numpy.int32(ncB), block=(bx,by,1), grid=(gx,gy))
 
 cuda.memcpy_dtoh(d, d_gpu)
 for i in range(len(d)):
