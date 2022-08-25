@@ -63,7 +63,7 @@ __global__ void optimize(float *d, float *a, float lr)
 
 __global__ void array_mulitply_minus(float *d, float *a, float *b)
 {
-  const int i = threadIdx.x;
+  const int i = threadIdx.x + blockDim.x * blockIdx.x;
   d[i] = -a[i] * b[i];
 }
 
@@ -328,11 +328,25 @@ for epoch in range(1):
     gx = 1
     gy = 1
 
-    multiply_them(w1grads_gpu, outputLossInput_gpu, n1_gpu, n_NP, numpy.int32(bx), block=(bx,by,1), grid=(gx,gy))
+    bxn = bx
+    byn = by
+
+    if bx*by > 1024:
+      if bx > by:
+        bxn = int(1024 / by)
+        gx = int(bx / bxn) + 1
+      
+
+    multiply_them(w1grads_gpu, outputLossInput_gpu, n1_gpu, n_NP, numpy.int32(bx), block=(bxn,by,1), grid=(gx,gy))
 
     #backward first weights ???
-    
-    array_mulitply(w1Loss_gpu,w1_gpu,w1grads_gpu,block=((len(n1) * len(n2)),1,1))
+    gx = 1
+    bx = len(n1) * len(n2)
+    if bx > 1024:
+      gx = int(bx / 1024) + 1
+      bx = 1024
+
+    array_mulitply(w1Loss_gpu,w1_gpu,w1grads_gpu,block=(bx,1,1),grid=(gx,1))
 
     get_node_loss(totalErrors_gpu,w1Loss_gpu,numpy.int32(len(n2)),numpy.int32(len(n2)),block=(len(n1),1,1))
 
@@ -393,7 +407,7 @@ by = 3 # number of rows in A
 gx = 1
 gy = 1
 
-multiply_them(d_gpu, a_gpu, b_gpu, n_NP, numpy.int32(ncB), block=(bx,by,1), grid=(gx,gy))
+multiply_them(d_gpu, a_gpu, b_gpu, n_NP, numpy.int32(bx), block=(bx,by,1), grid=(gx,gy))
 
 cuda.memcpy_dtoh(d, d_gpu)
 for i in range(len(d)):
