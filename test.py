@@ -43,16 +43,19 @@ print("ffs")
 
 mod = comp.SourceModule(
     """
-__global__ void multiply_them(float *d, float *a, float *b, int ncA, int nrA)
+__global__ void multiply_them(float *d, float *a, float *b, int ncA, int ncB)
 {
   int row = threadIdx.y + blockDim.y * blockIdx.y;
   int col = threadIdx.x + blockDim.x * blockIdx.x;
 
   float t = 0;
+  if(col < ncB)
+  {
   for(int i = 0; i < ncA; i++){
-    t += a[(row * ncA) + i] * b[col + (i * nrA)];
+    t += a[(row * ncA) + i] * b[col + (i * ncB)];
   }
-  d[(row * nrA) + col] = t;
+  }
+  d[(row * ncB) + col] = t;
 }
 
 __global__ void optimize(float *d, float *a, float lr)
@@ -178,8 +181,13 @@ nodes2 = numpy.zeros_like(nodes)
 nodes_gpu = cuda.mem_alloc(nodes.nbytes)
 cuda.memcpy_htod(nodes_gpu, nodes)
 
+nrA = 10
+ncA = 784
+nrB = 784
+ncB = 4
+
 nodes = numpy.matmul(weights,input)
-multiply_them(nodes_gpu,weights_gpu,input_gpu, numpy.int32(784), numpy.int32(4), block=(4,10,1), grid=(1,1))
+multiply_them(nodes_gpu,weights_gpu,input_gpu, numpy.int32(ncA), numpy.int32(ncB), block=(ncB,nrA,1), grid=(1,1))
 cuda.memcpy_dtoh(nodes2, nodes_gpu)
 for i in range(len(nodes)):
   print(nodes[i], " -> ", nodes2[i])
