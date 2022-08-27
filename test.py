@@ -24,7 +24,7 @@ class Net():
         gx = 1
         gy =1
 
-        multiply_them(n1_gpu, w0_gpu, n0_gpu, n_NP, numpy.int32(bx), block=(bx,by,1), grid=(gx,gy))
+        multiply_them(n1_gpu, w0_gpu, n0_gpu, n_NP, numpy.int32(bx) ,numpy.int32(len(w0)) , block=(bx,by,1), grid=(gx,gy))
         sigmoid(n1_gpu,block=(len(n1),1,1))
 
         n = len(w1[0])
@@ -35,7 +35,7 @@ class Net():
         gx = 1
         gy
 
-        multiply_them(n2_gpu, w1_gpu, n1_gpu, n_NP, numpy.int32(bx), block=(bx,by,1), grid=(gx,gy))
+        multiply_them(n2_gpu, w1_gpu, n1_gpu, n_NP, numpy.int32(bx), numpy.int32(len(w1)), block=(bx,by,1), grid=(gx,gy))
         sigmoid(n2_gpu,block=(len(n2),1,1))
         return 0
 
@@ -43,13 +43,13 @@ print("ffs")
 
 mod = comp.SourceModule(
     """
-__global__ void multiply_them(float *d, float *a, float *b, int ncA, int ncB)
+__global__ void multiply_them(float *d, float *a, float *b, int ncA, int ncB, int nrA)
 {
   int row = threadIdx.y + blockDim.y * blockIdx.y;
   int col = threadIdx.x + blockDim.x * blockIdx.x;
 
   float t = 0;
-  if(col < ncB)
+  if(col < ncB && row < nrA)
   {
   for(int i = 0; i < ncA; i++){
     t += a[(row * ncA) + i] * b[col + (i * ncB)];
@@ -415,7 +415,7 @@ by = 3 # number of rows in A
 gx = 1
 gy = 1
 
-multiply_them(d_gpu, a_gpu, b_gpu, n_NP, numpy.int32(bx), block=(bx,by,1), grid=(gx,gy))
+multiply_them(d_gpu, a_gpu, b_gpu, n_NP, numpy.int32(bx), numpy.int32(len(a)), block=(bx,by,1), grid=(gx,gy))
 
 cuda.memcpy_dtoh(d, d_gpu)
 for i in range(len(d)):
