@@ -50,7 +50,7 @@ __global__ void multiply_them(float *d, float *a, float *b, int ncA, int nrA)
 
   float t = 0;
   for(int i = 0; i < ncA; i++){
-    t += a[(row * ncA) + i] * b[col + i];
+    t += a[(row * ncA) + i] * b[col + (i * nrA)];
   }
   d[(row * nrA) + col] = t;
 }
@@ -165,21 +165,21 @@ check_answer = mod.get_function("check_answer")
 set_to_zero = mod.get_function("set_to_zero")
 
 # --- testing cuda matrix multiplication ---
-input = numpy.random.rand(784,1).astype(numpy.float32)
-input_gpu = cuda.mem_alloc(input.nbytes)
-cuda.memcpy_htod(input_gpu, input)
-
-weights = numpy.random.rand(4,784).astype(numpy.float32)
+weights = numpy.random.rand(10,784).astype(numpy.float32)
 weights_gpu = cuda.mem_alloc(weights.nbytes)
 cuda.memcpy_htod(weights_gpu, weights)
 
-nodes = numpy.empty((4,1),dtype=numpy.float32); nodes.fill(0)
+input = numpy.random.rand(784,4).astype(numpy.float32)
+input_gpu = cuda.mem_alloc(input.nbytes)
+cuda.memcpy_htod(input_gpu, input)
+
+nodes = numpy.empty((10,4),dtype=numpy.float32); nodes.fill(0)
 nodes2 = numpy.zeros_like(nodes)
 nodes_gpu = cuda.mem_alloc(nodes.nbytes)
 cuda.memcpy_htod(nodes_gpu, nodes)
 
 nodes = numpy.matmul(weights,input)
-multiply_them(nodes_gpu,weights_gpu,input_gpu, numpy.int32(784), numpy.int32(1), block=(1,4,1), grid=(1,1))
+multiply_them(nodes_gpu,weights_gpu,input_gpu, numpy.int32(784), numpy.int32(4), block=(4,10,1), grid=(1,1))
 cuda.memcpy_dtoh(nodes2, nodes_gpu)
 for i in range(len(nodes)):
   print(nodes[i], " -> ", nodes2[i])
