@@ -22,10 +22,21 @@ class Net():
         bx = 1 # number of cols in B
         by = len(w0) # number of rows in A
         gx = 1
-        gy =1
+        gy = 1
+
+        if by > 1024:
+          gy = int(by / 1024) + 1
+          by = 1024
 
         multiply_them(n1_gpu, w0_gpu, n0_gpu, n_NP, numpy.int32(bx) ,numpy.int32(len(w0)) , block=(bx,by,1), grid=(gx,gy))
-        sigmoid(n1_gpu,block=(len(n1),1,1))
+
+        bx = len(n1)
+        gx = 1
+        if bx > 1024:
+          gx = int(bx / 1024) + 1
+          bx = 1024
+
+        sigmoid(n1_gpu, numpy.int32(len(n1)),block=(bx,1,1), grid=(gx,1))
 
         n = len(w1[0])
         n_NP = numpy.int32(n)
@@ -36,7 +47,7 @@ class Net():
         gy
 
         multiply_them(n2_gpu, w1_gpu, n1_gpu, n_NP, numpy.int32(bx), numpy.int32(len(w1)), block=(bx,by,1), grid=(gx,gy))
-        sigmoid(n2_gpu,block=(len(n2),1,1))
+        sigmoid(n2_gpu, numpy.int32(len(n2)) ,block=(len(n2),1,1))
         return 0
 
 print("ffs")
@@ -136,16 +147,22 @@ __global__ void relu(float *a)
   }
 }
 
-__global__ void sigmoid(float *d)
+__global__ void sigmoid(float *d, int length)
 {
-  const int i = threadIdx.x;
-  d[i] = 1 / (1 + exp(-d[i]));
+  const int i = threadIdx.x + blockDim.x * blockIdx.x;
+  if(i < length)
+  {
+    d[i] = 1 / (1 + exp(-d[i]));
+  }
 }
 
-__global__ void der_sigmoid(float *d, float *a)
+__global__ void der_sigmoid(float *d, float *a, int length)
 {
-  const int i = threadIdx.x;
-  d[i] = a[i] * (1 - a[i]);
+  const int i = threadIdx.x + blockIdx.x * blockDim.x;
+  if(i < length)
+  {
+    d[i] = a[i] * (1 - a[i]);
+  }
 }
 """
 )
@@ -317,8 +334,14 @@ for epoch in range(1):
     #last weights
 
     testNet.forward(n0_gpu)
-    der_sigmoid(n1input_gpu,n1_gpu,block=(len(n1),1,1))
-    der_sigmoid(n2input_gpu,n2_gpu,block=(len(n2),1,1))
+
+    bx = len(n1)
+    gx = 1
+    if bx > 1024:
+      gx = int(bx / 1024) + 1
+      bx = 1024
+    der_sigmoid(n1input_gpu,n1_gpu, numpy.int32(len(n1)),block=(bx,1,1), grid=(gx,1))
+    der_sigmoid(n2input_gpu,n2_gpu, numpy.int32(len(n2)), block=(len(n2),1,1))
 
     check_answer(training_correct_gpu, n2_gpu, numpy.int32(label_train[i]),block=(1,1,1))
 
