@@ -426,8 +426,31 @@ for epoch in range(1):
 
     optimize(w0_gpu,w0grads_gpu,learningRate, length, block=(bx,by,1),grid=(gx,gy))
 
+    bx = len(n1)
+    by = len(n2)
+    gx = 1
+    gy = 1
+
+    if bx > 1024:
+      gx = int(bx / 1024) + 1
+      bx = 1024
+
+    if by > 1024:
+      gy = int(by / 1024) + 1
+      by = 1024
+
+    if (bx * by) > 1024:
+      if(bx >= by):
+        byn = int(1024 / bx)
+        gy = gy * (int(by / byn))
+        by = byn
+      else:
+        bxn = int(1024 / by)
+        gx = gx * (int(bx / bxn))
+        bx = bxn
+
     length = numpy.int32(len(n1) * len(n2))
-    optimize(w1_gpu, w1grads_gpu,learningRate, length, block=(len(n1),len(n2),1),grid=(1,1))
+    optimize(w1_gpu, w1grads_gpu,learningRate, length, block=(bx,by,1),grid=(gx,gy))
 
   print("--- %s seconds ---" % (time.time() - start_time))
   cuda.memcpy_dtoh(training_correct,training_correct_gpu)
