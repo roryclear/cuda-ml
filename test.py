@@ -72,10 +72,7 @@ __global__ void multiply_them(float *d, float *a, float *b, int ncA, int ncB, in
 __global__ void optimize(float *d, float *a, float lr, int length)
 {
   int i = threadIdx.x + (blockDim.x * (threadIdx.y + blockDim.y * blockIdx.y));
-  if(i < length)
-  {
   d[i] = (lr * -a[i]) + d[i];
-  }
 }
 
 __global__ void array_mulitply_minus(float *d, float *a, float *b)
@@ -421,7 +418,6 @@ for epoch in range(1):
         gx = gx * (int(bx / bxn))
         bx = bxn
     
-    #print("bx =",bx,"by =",by,"gx =",gx,"gy =",gy)
     length = numpy.int32(len(n0) * len(n1))
 
     optimize(w0_gpu,w0grads_gpu,learningRate, length, block=(bx,by,1),grid=(gx,gy))
@@ -442,7 +438,7 @@ for epoch in range(1):
     if (bx * by) > 1024:
       if(bx >= by):
         byn = int(1024 / bx)
-        gy = gy * (int(by / byn))
+        gy = gy * (int(by / byn) + 1)
         by = byn
       else:
         bxn = int(1024 / by)
@@ -450,6 +446,7 @@ for epoch in range(1):
         bx = bxn
 
     length = numpy.int32(len(n1) * len(n2))
+
     optimize(w1_gpu, w1grads_gpu,learningRate, length, block=(bx,by,1),grid=(gx,gy))
 
   print("--- %s seconds ---" % (time.time() - start_time))
