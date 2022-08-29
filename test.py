@@ -69,10 +69,13 @@ __global__ void multiply_them(float *d, float *a, float *b, int ncA, int ncB, in
   d[(row * ncB) + col] = t;
 }
 
-__global__ void optimize(float *d, float *a, float lr, int length)
+__global__ void optimize(float *d, float *a, float lr, int xlength, int ylength)
 {
-  int i = threadIdx.x + (blockDim.x * (threadIdx.y + blockDim.y * blockIdx.y));
+  int i = (threadIdx.x + blockIdx.x * blockDim.x) +  (threadIdx.y + blockIdx.y * blockDim.y) * xlength;
+  if(i < (xlength * ylength))
+  {
   d[i] = (lr * -a[i]) + d[i];
+  }
 }
 
 __global__ void array_mulitply_minus(float *d, float *a, float *b)
@@ -396,7 +399,9 @@ for epoch in range(1):
 
     #optimize
     bx = len(n0)
+    xlength = numpy.int32(len(n0))
     by = len(n1)
+    ylength = numpy.int32(len(n1))
     gx = 1
     gy = 1
 
@@ -420,10 +425,14 @@ for epoch in range(1):
     
     length = numpy.int32(len(n0) * len(n1))
 
-    optimize(w0_gpu,w0grads_gpu,learningRate, length, block=(bx,by,1),grid=(gx,gy))
+    #print("bx =",bx,"by =",by,"gx =",gx,"gy =",gy)
+
+    optimize(w0_gpu,w0grads_gpu,learningRate, xlength, ylength, block=(bx,by,1),grid=(gx,gy))
 
     bx = len(n1)
+    xlength = numpy.int32(len(n1))
     by = len(n2)
+    ylength = numpy.int32(len(n2))
     gx = 1
     gy = 1
 
@@ -447,7 +456,9 @@ for epoch in range(1):
 
     length = numpy.int32(len(n1) * len(n2))
 
-    optimize(w1_gpu, w1grads_gpu,learningRate, length, block=(bx,by,1),grid=(gx,gy))
+    #print("bx =",bx,"by =",by,"gx =",gx,"gy =",gy)
+
+    optimize(w1_gpu, w1grads_gpu,learningRate, xlength, ylength, block=(bx,by,1),grid=(gx,gy))
 
   print("--- %s seconds ---" % (time.time() - start_time))
   cuda.memcpy_dtoh(training_correct,training_correct_gpu)
