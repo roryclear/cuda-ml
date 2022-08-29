@@ -98,15 +98,21 @@ __global__ void get_output_loss(float *d, float *o, int a)
   }
 }
 
-__global__ void get_node_loss(float *d, float *a, int n, int s)
+__global__ void get_node_loss(float *d, float *a, int n, int length)
 {
-  int i = threadIdx.x;
+  int i = threadIdx.x + blockDim.x * blockIdx.x;
   float t = 0;
   for(int j = 0; j < n; j++) 
   {
-    t += a[i + j*blockDim.x];
-  } 
-  d[i] = t / s;
+    if(i < length)
+    {
+    t += a[i + j*length];
+    }
+  }
+  if(i < length)
+  { 
+  d[i] = t / n;
+  }
 }
 
 __global__ void get_grads(float *d, float *a, float *b, float *c)
@@ -379,7 +385,12 @@ for epoch in range(1):
 
     array_mulitply(w1Loss_gpu,w1_gpu,w1grads_gpu,block=(bx,1,1),grid=(gx,1))
 
-    get_node_loss(totalErrors_gpu,w1Loss_gpu,numpy.int32(len(n2)),numpy.int32(len(n2)),block=(len(n1),1,1))
+    bx = len(n1)
+    gx = 1
+    if bx > 1024:
+      gx = int(bx / 1024) + 1
+      bx = 1024
+    get_node_loss(totalErrors_gpu,w1Loss_gpu,numpy.int32(len(n2)),numpy.int32(len(n1)),block=(bx,1,1),grid=(gx,1))
 
     get_grads(w0grads_gpu,totalErrors_gpu,n1input_gpu,n0_gpu,block=(len(n0),1,1),grid=(len(n1),1))
 
