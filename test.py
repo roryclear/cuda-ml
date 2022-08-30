@@ -123,6 +123,15 @@ __global__ void get_grads(float *d, float *a, float *b, float *c)
   d[threadIdx.x + blockDim.x * blockIdx.x] = a[blockIdx.x] * b[blockIdx.x] * c[threadIdx.x]; 
 }
 
+__global__ void reset_grads(float *d, int length)
+{
+  int i = threadIdx.x + blockDim.x * blockIdx.x;
+  if(i < length)
+  {
+    d[i] = 0;
+  }
+}
+
 __global__ void set_to_zero(int *a)
 {
   int i = threadIdx.x;
@@ -190,6 +199,7 @@ array_mulitply = mod.get_function("array_mulitply")
 get_output_loss = mod.get_function("get_output_loss")
 get_node_loss = mod.get_function("get_node_loss")
 get_grads = mod.get_function("get_grads")
+reset_grads = mod.get_function("reset_grads")
 check_answer = mod.get_function("check_answer")
 set_to_zero = mod.get_function("set_to_zero")
 
