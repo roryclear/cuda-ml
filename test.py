@@ -69,10 +69,10 @@ __global__ void multiply_them(float *d, float *a, float *b, int ncA, int ncB, in
   d[(row * ncB) + col] = t;
 }
 
-__global__ void optimize(float *d, float *a, float lr, int xlength, int ylength)
+__global__ void optimize(float *d, float *a, float lr, int length)
 {
-  int i = (threadIdx.x + blockIdx.x * blockDim.x) +  (threadIdx.y + blockIdx.y * blockDim.y) * xlength;
-  if(i < (xlength * ylength))
+  int i = threadIdx.x + blockIdx.x * blockDim.x;
+  if(i < length)
   {
   d[i] = (lr * -a[i]) + d[i];
   }
@@ -408,67 +408,21 @@ for epoch in range(1):
     get_grads(w0grads_gpu,totalErrors_gpu,n1input_gpu,n0_gpu,block=(len(n0),1,1),grid=(len(n1),1))
 
     #optimize
-    bx = len(n0)
-    xlength = numpy.int32(len(n0))
-    by = len(n1)
-    ylength = numpy.int32(len(n1))
+    length = len(n0) * len(n1)
+    bx = length
     gx = 1
-    gy = 1
-
     if bx > 1024:
       gx = int(bx / 1024) + 1
       bx = 1024
+    optimize(w0_gpu,w0grads_gpu,learningRate, numpy.int32(length), block=(bx,1,1),grid=(gx,1))
 
-    if by > 1024:
-      gy = int(by / 1024) + 1
-      by = 1024
-
-    if (bx * by) > 1024:
-      if(bx >= by):
-        byn = int(1024 / bx)
-        gy = gy * (int(by / byn))
-        by = byn
-      else:
-        bxn = int(1024 / by)
-        gx = gx * (int(bx / bxn))
-        bx = bxn
-    
-    length = numpy.int32(len(n0) * len(n1))
-
-    #print("bx =",bx,"by =",by,"gx =",gx,"gy =",gy)
-
-    optimize(w0_gpu,w0grads_gpu,learningRate, xlength, ylength, block=(bx,by,1),grid=(gx,gy))
-
-    bx = len(n1)
-    xlength = numpy.int32(len(n1))
-    by = len(n2)
-    ylength = numpy.int32(len(n2))
+    length = len(n1) * len(n2)
+    bx = length
     gx = 1
-    gy = 1
-
     if bx > 1024:
       gx = int(bx / 1024) + 1
       bx = 1024
-
-    if by > 1024:
-      gy = int(by / 1024) + 1
-      by = 1024
-
-    if (bx * by) > 1024:
-      if(bx >= by):
-        byn = int(1024 / bx)
-        gy = gy * (int(by / byn) + 1)
-        by = byn
-      else:
-        bxn = int(1024 / by)
-        gx = gx * (int(bx / bxn))
-        bx = bxn
-
-    length = numpy.int32(len(n1) * len(n2))
-
-    #print("bx =",bx,"by =",by,"gx =",gx,"gy =",gy)
-
-    optimize(w1_gpu, w1grads_gpu,learningRate, xlength, ylength, block=(bx,by,1),grid=(gx,gy))
+    optimize(w1_gpu, w1grads_gpu,learningRate, numpy.int32(length), block=(bx,1,1),grid=(gx,1))
 
   print("--- %s seconds ---" % (time.time() - start_time))
   cuda.memcpy_dtoh(training_correct,training_correct_gpu)
