@@ -69,6 +69,21 @@ __global__ void multiply_them(float *d, float *a, float *b, int ncA, int ncB, in
   d[(row * ncB) + col] = t;
 }
 
+__global__ void multiply_them_add(float *d, float *a, float *b, int ncA, int ncB, int nrA)
+{
+  int row = threadIdx.y + blockDim.y * blockIdx.y;
+  int col = threadIdx.x + blockDim.x * blockIdx.x;
+
+  float t = 0;
+  if(col < ncB && row < nrA)
+  {
+  for(int i = 0; i < ncA; i++){
+    t += a[(row * ncA) + i] * b[col + (i * ncB)];
+  }
+  }
+  d[(row * ncB) + col] += t;
+}
+
 __global__ void optimize(float *d, float *a, float lr, int length)
 {
   int i = threadIdx.x + blockIdx.x * blockDim.x;
@@ -120,10 +135,10 @@ __global__ void get_node_loss(float *d, float *a, int n, int length)
 
 __global__ void get_grads(float *d, float *a, float *b, float *c)
 {
-  d[threadIdx.x + blockDim.x * blockIdx.x] = a[blockIdx.x] * b[blockIdx.x] * c[threadIdx.x]; 
+  d[threadIdx.x + blockDim.x * blockIdx.x] += a[blockIdx.x] * b[blockIdx.x] * c[threadIdx.x]; 
 }
 
-__global__ void reset_grads(float *d, int length)
+__global__ void reset_values(float *d, int length)
 {
   int i = threadIdx.x + blockDim.x * blockIdx.x;
   if(i < length)
@@ -132,11 +147,6 @@ __global__ void reset_grads(float *d, int length)
   }
 }
 
-__global__ void set_to_zero(int *a)
-{
-  int i = threadIdx.x;
-  a[i] = 0;
-}
 
 __global__ void check_answer(int *a, float *output, int answer)
 {
@@ -148,6 +158,15 @@ __global__ void check_answer(int *a, float *output, int answer)
     }
   }
   a[0] = a[0] + 1;
+}
+
+__global__ void add_them(float* d, float *a, int length)
+{
+  int i = threadIdx.x + blockDim.x * blockIdx.x;
+  if(i < length)
+  {
+    d[i] = d[i] + a[i];
+  }
 }
 
 __global__ void minus_them(float *d, float *a)
@@ -189,6 +208,7 @@ MAX_THREADS_PER_BLOCK = \
     cuda.Device(0).get_attribute(pycuda._driver.device_attribute.MAX_THREADS_PER_BLOCK)
 
 multiply_them = mod.get_function("multiply_them")
+multiply_them_add = mod.get_function("multiply_them_add")
 optimize = mod.get_function("optimize")
 minus_them = mod.get_function("minus_them")
 relu = mod.get_function("relu")
@@ -199,9 +219,9 @@ array_mulitply = mod.get_function("array_mulitply")
 get_output_loss = mod.get_function("get_output_loss")
 get_node_loss = mod.get_function("get_node_loss")
 get_grads = mod.get_function("get_grads")
-reset_grads = mod.get_function("reset_grads")
+reset_values = mod.get_function("reset_values")
 check_answer = mod.get_function("check_answer")
-set_to_zero = mod.get_function("set_to_zero")
+add_them = mod.get_function("add_them")
 
 # --- testing cuda matrix multiplication ---
 weights = numpy.random.rand(10,784).astype(numpy.float32)
@@ -308,7 +328,9 @@ w1grads = numpy.zeros_like(w1)
 w1Loss = numpy.zeros_like(w1)
 
 w1grads_gpu = cuda.mem_alloc(w1grads.nbytes)
+w1gradsBatch_gpu = cuda.mem_alloc(w1grads.nbytes)
 cuda.memcpy_htod(w1grads_gpu,w1grads)
+cuda.memcpy_htod(w1gradsBatch_gpu,w1grads)
 
 w1Loss_gpu = cuda.mem_alloc(w1Loss.nbytes)
 cuda.memcpy_htod(w1Loss_gpu,w1Loss)
@@ -341,6 +363,7 @@ cuda.memcpy_htod(test_correct_gpu,test_correct)
 totalErrors = numpy.zeros((len(n1)),dtype=numpy.float32)
 
 learningRate = numpy.float32(0.1)
+batchSize = 1
 for epoch in range(1):
 
   correct = 0
@@ -389,6 +412,14 @@ for epoch in range(1):
 
     multiply_them(w1grads_gpu, outputLossInput_gpu, n1_gpu, n_NP, numpy.int32(bx), block=(bxn,by,1), grid=(gx,gy))
 
+    length = len(w1) * len(w1[0])
+    bx = length
+    gx = 1
+    if bx > 1024:
+      gx = int(bx / 1024) + 1
+      bx = 1024
+    add_them(w1gradsBatch_gpu, w1grads_gpu,numpy.int32(length),block=(bx,1,1),grid=(gx,1))
+
     #backward first weights ???
     gx = 1
     bx = len(n1) * len(n2)
@@ -407,26 +438,30 @@ for epoch in range(1):
 
     get_grads(w0grads_gpu,totalErrors_gpu,n1input_gpu,n0_gpu,block=(len(n0),1,1),grid=(len(n1),1))
 
-    #optimize
-    length = len(n0) * len(n1)
-    bx = length
-    gx = 1
-    if bx > 1024:
-      gx = int(bx / 1024) + 1
-      bx = 1024
-    optimize(w0_gpu,w0grads_gpu,learningRate, numpy.int32(length), block=(bx,1,1),grid=(gx,1))
+    if i % batchSize == 0 or i == (len(img_train) - 1):
+      #optimize
+      length = len(n0) * len(n1)
+      bx = length
+      gx = 1
+      if bx > 1024:
+        gx = int(bx / 1024) + 1
+        bx = 1024
+      optimize(w0_gpu,w0grads_gpu,learningRate, numpy.int32(length), block=(bx,1,1),grid=(gx,1))
+      reset_values(w0grads_gpu,numpy.int32(length),block=(bx,1,1),grid=(gx,1))
 
-    length = len(n1) * len(n2)
-    bx = length
-    gx = 1
-    if bx > 1024:
-      gx = int(bx / 1024) + 1
-      bx = 1024
-    optimize(w1_gpu, w1grads_gpu,learningRate, numpy.int32(length), block=(bx,1,1),grid=(gx,1))
+      length = len(n1) * len(n2)
+      bx = length
+      gx = 1
+      if bx > 1024:
+        gx = int(bx / 1024) + 1
+        bx = 1024
+      optimize(w1_gpu, w1gradsBatch_gpu,learningRate, numpy.int32(length), block=(bx,1,1),grid=(gx,1))
+      reset_values(w1gradsBatch_gpu,numpy.int32(length),block=(bx,1,1),grid=(gx,1))
+      
 
   print("--- %s seconds ---" % (time.time() - start_time))
   cuda.memcpy_dtoh(training_correct,training_correct_gpu)
-  set_to_zero(training_correct_gpu,block=(1,1,1))
+  reset_values(training_correct_gpu,numpy.int32(1),block=(1,1,1))
   print("correct (GPU) = ",(training_correct[0]/len(img_train)))
 
 # --- testing ---
