@@ -15,7 +15,7 @@ class Net():
         super(Net, self).__init__()
         self.weights = [[[]]]
         
-    def forward(self, input):
+    def forward(self):
         n = len(w0[0]) # number of columns in A / number of rows in B
         n_NP = numpy.int32(n)
 
@@ -257,6 +257,14 @@ img_test = img_test / 255
 
 layers = [784,16,10]
 
+numberOfNodes = 0
+for i in range(len(layers)):
+  numberOfNodes += layers[i]
+
+nodes = numpy.zeros((numberOfNodes, 1),dtype=numpy.float32)
+nodes_gpu = cuda.mem_alloc(nodes.nbytes)
+cuda.memcpy_htod(nodes_gpu,nodes)
+
 w0=numpy.empty((layers[1],layers[0])).astype(numpy.float32); w0.fill(1)
 w1=numpy.empty((layers[2],layers[1])).astype(numpy.float32); w1.fill(1)
 
@@ -375,7 +383,7 @@ for epoch in range(1):
 
     #last weights
 
-    testNet.forward(n0_gpu)
+    testNet.forward()
 
     bx = len(n1)
     gx = 1
@@ -475,7 +483,7 @@ for i in range(len(img_test)):
   n0_gpu = cuda.mem_alloc(testImg32.nbytes)
   cuda.memcpy_htod(n0_gpu, testImg32)
 
-  testNet.forward(n0_gpu)
+  testNet.forward()
 
   check_answer(test_correct_gpu, n2_gpu, numpy.int32(label_test[i]),block=(1,1,1))
   #guess = output.index(max(output))
