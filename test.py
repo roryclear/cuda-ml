@@ -18,14 +18,14 @@ class Net():
     def forward(self):
 
         #copy input (n0_gpu) to nodes_gpu
-        length = len(n0)
+        length = layers[0]
         bx = length
         gx = 1
         if bx > 1024:
           gx = int(bx / 1024) + 1
           bx = 1024
         
-        copy(nodes_gpu, n0_gpu, numpy.int32(0), numpy.int32(0), numpy.int32(length), block=(bx,1,1), grid=(gx,1))
+        copy(nodes_gpu, img_gpu, numpy.int32(0), numpy.int32(0), numpy.int32(length), block=(bx,1,1), grid=(gx,1))
 
         n = len(w0[0]) # number of columns in A / number of rows in B
         n_NP = numpy.int32(n)
@@ -50,7 +50,6 @@ class Net():
           gx = int(bx / 1024) + 1
           bx = 1024
 
-        #sigmoid(n1_gpu, numpy.int32(len(n1)),block=(bx,1,1), grid=(gx,1))
         sigmoid_index(nodes_gpu,numpy.int32(layers[0]),numpy.int32(layers[1]), block=(bx,1,1), grid=(gx,1))
 
         n = len(w1[0])
@@ -407,14 +406,6 @@ cuda.memcpy_htod(w0_gpu, w0)
 w1_gpu = cuda.mem_alloc(w1.nbytes)
 cuda.memcpy_htod(w1_gpu, w1)
 
-n1 = numpy.zeros((layers[1], 1),dtype=numpy.float32)
-n1_gpu = cuda.mem_alloc(n1.nbytes)
-cuda.memcpy_htod(n1_gpu,n1)
-
-n1input = numpy.zeros((layers[1], 1),dtype=numpy.float32)
-n1input_gpu = cuda.mem_alloc(n1input.nbytes)
-cuda.memcpy_htod(n1input_gpu,n1input)
-
 # --- training ---
 
 w0grads = numpy.zeros_like(w0)
@@ -438,13 +429,9 @@ outputLossInput = numpy.zeros_like(outputLoss) #outputLoss * input
 outputLossInput_gpu = cuda.mem_alloc(outputLossInput.nbytes)
 cuda.memcpy_htod(outputLossInput_gpu,outputLossInput)
 
-totalErrors = numpy.zeros((len(n1)),dtype=numpy.float32)
+totalErrors = numpy.zeros((layers[1]),dtype=numpy.float32)
 totalErrors_gpu = cuda.mem_alloc(totalErrors.nbytes)
 cuda.memcpy_htod(totalErrors_gpu,totalErrors)
-
-n0 = numpy.zeros((layers[0]),dtype=numpy.float32)
-n0_gpu = cuda.mem_alloc(n0.nbytes)
-cuda.memcpy_htod(n0_gpu,n0)
 
 training_correct = numpy.zeros((1),dtype=numpy.int32)
 training_correct_gpu = cuda.mem_alloc(training_correct.nbytes)
@@ -454,7 +441,11 @@ test_correct = numpy.zeros((1),dtype=numpy.int32)
 test_correct_gpu = cuda.mem_alloc(test_correct.nbytes)
 cuda.memcpy_htod(test_correct_gpu,test_correct)
 
-totalErrors = numpy.zeros((len(n1)),dtype=numpy.float32)
+trainImg = img_train[0]
+trainImg32 = trainImg.astype(numpy.float32)
+img_gpu = cuda.mem_alloc(trainImg32.nbytes)
+
+totalErrors = numpy.zeros((layers[1]),dtype=numpy.float32)
 
 learningRate = numpy.float32(0.1)
 batchSize = 1
@@ -465,7 +456,7 @@ for epoch in range(1):
   for i in range(len(img_train)): 
     trainImg = img_train[i]
     trainImg32 = trainImg.astype(numpy.float32)
-    cuda.memcpy_htod(n0_gpu,trainImg32)
+    cuda.memcpy_htod(img_gpu,trainImg32)
 
     #last weights
 
@@ -492,7 +483,7 @@ for epoch in range(1):
     n = 1
     n_NP = numpy.int32(n)
 
-    bx = len(n1)
+    bx = layers[1]
     by = len(outputLoss)
     gx = 1
     gy = 1
@@ -528,20 +519,20 @@ for epoch in range(1):
 
     array_mulitply(w1Loss_gpu,w1_gpu,w1grads_gpu,block=(bx,1,1),grid=(gx,1))
 
-    bx = len(n1)
+    bx = layers[1]
     gx = 1
     if bx > 1024:
       gx = int(bx / 1024) + 1
       bx = 1024
-    get_node_loss(totalErrors_gpu,w1Loss_gpu,numpy.int32(layers[2]),numpy.int32(len(n1)),block=(bx,1,1),grid=(gx,1))
+    get_node_loss(totalErrors_gpu,w1Loss_gpu,numpy.int32(layers[2]),numpy.int32(layers[1]),block=(bx,1,1),grid=(gx,1))
 
     startB = numpy.int32(layers[0])
     startC = numpy.int32(0)
-    get_grads(w0grads_gpu,totalErrors_gpu,nodesInput_gpu,nodes_gpu,startB,startC,block=(len(n0),1,1),grid=(len(n1),1))
+    get_grads(w0grads_gpu,totalErrors_gpu,nodesInput_gpu,nodes_gpu,startB,startC,block=(layers[0],1,1),grid=(layers[1],1))
 
     if i % batchSize == 0 or i == (len(img_train) - 1):
       #optimize
-      length = len(n0) * len(n1)
+      length = layers[0] * layers[1]
       bx = length
       gx = 1
       if bx > 1024:
@@ -573,8 +564,7 @@ for i in range(len(img_test)):
   testImg = img_test[i]
   testImg32 = testImg.astype(numpy.float32)
   
-  n0_gpu = cuda.mem_alloc(testImg32.nbytes)
-  cuda.memcpy_htod(n0_gpu, testImg32)
+  cuda.memcpy_htod(img_gpu, testImg32)
 
   testNet.forward()
 
