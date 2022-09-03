@@ -344,7 +344,7 @@ for i in range(len(nodes)):
 img_train = img_train / 255
 img_test = img_test / 255
 
-layers = [784,150,10]
+layers = [784,16,10]
 
 numberOfNodes = 0
 for i in range(len(layers)):
@@ -415,13 +415,6 @@ n1input = numpy.zeros((layers[1], 1),dtype=numpy.float32)
 n1input_gpu = cuda.mem_alloc(n1input.nbytes)
 cuda.memcpy_htod(n1input_gpu,n1input)
 
-n2 = numpy.zeros((layers[2], 1),dtype=numpy.float32)
-n2_gpu = cuda.mem_alloc(n2.nbytes)
-cuda.memcpy_htod(n2_gpu,n2)
-
-n2input = numpy.zeros((layers[2], 1),dtype=numpy.float32)
-n2input_gpu = cuda.mem_alloc(n2input.nbytes)
-cuda.memcpy_htod(n2input_gpu,n2input)
 # --- training ---
 
 w0grads = numpy.zeros_like(w0)
@@ -439,7 +432,7 @@ cuda.memcpy_htod(w1Loss_gpu,w1Loss)
 w0grads_gpu = cuda.mem_alloc(w0grads.nbytes)
 cuda.memcpy_htod(w0grads_gpu,w0grads)
 
-outputLoss = numpy.zeros((len(n2)),dtype=numpy.float32)
+outputLoss = numpy.zeros((layers[2]),dtype=numpy.float32)
 outputLoss_gpu = cuda.mem_alloc(outputLoss.nbytes)
 outputLossInput = numpy.zeros_like(outputLoss) #outputLoss * input
 outputLossInput_gpu = cuda.mem_alloc(outputLossInput.nbytes)
@@ -491,7 +484,7 @@ for epoch in range(1):
 
     #backward
     start = numpy.int32(layers[0] + layers[1])
-    get_output_loss(outputLoss_gpu, nodes_gpu, start, numpy.int32(label_train[i]), block=(len(n2),1,1))
+    get_output_loss(outputLoss_gpu, nodes_gpu, start, numpy.int32(label_train[i]), block=(layers[2],1,1))
     
     startB = numpy.int32(layers[0] + layers[1])
     array_mulitply_minus(outputLossInput_gpu,outputLoss_gpu,nodesInput_gpu, startB,block=(len(outputLoss),1,1))
@@ -528,7 +521,7 @@ for epoch in range(1):
 
     #backward first weights ???
     gx = 1
-    bx = len(n1) * len(n2)
+    bx = layers[1] * layers[2]
     if bx > 1024:
       gx = int(bx / 1024) + 1
       bx = 1024
@@ -540,7 +533,7 @@ for epoch in range(1):
     if bx > 1024:
       gx = int(bx / 1024) + 1
       bx = 1024
-    get_node_loss(totalErrors_gpu,w1Loss_gpu,numpy.int32(len(n2)),numpy.int32(len(n1)),block=(bx,1,1),grid=(gx,1))
+    get_node_loss(totalErrors_gpu,w1Loss_gpu,numpy.int32(layers[2]),numpy.int32(len(n1)),block=(bx,1,1),grid=(gx,1))
 
     startB = numpy.int32(layers[0])
     startC = numpy.int32(0)
@@ -557,7 +550,7 @@ for epoch in range(1):
       optimize(w0_gpu,w0grads_gpu,learningRate, numpy.int32(length), block=(bx,1,1),grid=(gx,1))
       reset_values(w0grads_gpu,numpy.int32(length),block=(bx,1,1),grid=(gx,1))
 
-      length = len(n1) * len(n2)
+      length = layers[1] * layers[2]
       bx = length
       gx = 1
       if bx > 1024:
@@ -604,7 +597,6 @@ cuda.memcpy_htod(a_gpu, a)
 
 b_gpu = cuda.mem_alloc(b.nbytes)
 cuda.memcpy_htod(b_gpu, b)
-
 d_gpu = cuda.mem_alloc(d.nbytes)
 cuda.memcpy_htod(d_gpu, d)
 
