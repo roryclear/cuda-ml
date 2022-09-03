@@ -576,30 +576,3 @@ cuda.memcpy_dtoh(test_correct,test_correct_gpu)
 print("test dataset: correct = ",(test_correct[0]/len(img_test)))
 
 # --------
-
-#a=numpy.empty(1024, dtype=numpy.float32); a.fill(numpy.float32(1))
-a=numpy.matrix('4 8 9 1 2; 2 8 9 1 2; 8 7 5 7 1', dtype=numpy.float32)
-b=numpy.matrix('8; 7; 4; 2; 5', dtype=numpy.float32)
-d=numpy.matrix('0; 0; 0', dtype=numpy.float32)
-
-a_gpu = cuda.mem_alloc(a.nbytes)
-cuda.memcpy_htod(a_gpu, a)
-
-b_gpu = cuda.mem_alloc(b.nbytes)
-cuda.memcpy_htod(b_gpu, b)
-d_gpu = cuda.mem_alloc(d.nbytes)
-cuda.memcpy_htod(d_gpu, d)
-
-n = 5
-n_NP = numpy.int32(n)
-
-bx = 1 # number of cols in B
-by = 3 # number of rows in A
-gx = 1
-gy = 1
-
-multiply_them(d_gpu, a_gpu, b_gpu, n_NP, numpy.int32(bx), numpy.int32(len(a)), block=(bx,by,1), grid=(gx,gy))
-
-cuda.memcpy_dtoh(d, d_gpu)
-for i in range(len(d)):
-  print(i," : ", d[i])
