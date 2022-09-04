@@ -82,18 +82,8 @@ class Net():
           gx = int(bx / 1024) + 1
           bx = 1024
         sigmoid_index(nodes_gpu, start, length, block=(bx,1,1), grid=(gx,1))
-        startA = numpy.int32(layers[0] + layers[1])
-        startD = numpy.int32(0)
-        length = numpy.int32(layers[2])
-        bx = int(length)
-        gx = 1
-        if bx > 1024:
-          gx = int(bx / 1024) + 1
-          bx = 1024
         return 0
 
-print("ffs")
-#remove b from that
 mod = comp.SourceModule(
     """
 __global__ void multiply_them_index(float *nodesD, float *weights, float *nodesA, int ncA, int ncB, int nrA, int startn0, int startn1)
