@@ -27,22 +27,27 @@ class Net():
         
         copy(nodes_gpu, img_gpu, numpy.int32(0), numpy.int32(0), numpy.int32(length), block=(bx,1,1), grid=(gx,1))
 
+        
+        #checking something here
+        #cuda.memcpy_dtoh(nodes,nodes_gpu)
+        #print("nodes[0] =",nodes[0])
+        #print("startw =",startw)
+
+
         n = len(w0[0]) # number of columns in A / number of rows in B
         n_NP = numpy.int32(n)
-
         bx = 1 # number of cols in B
         by = len(w0) # number of rows in A
         gx = 1
         gy = 1
-
         if by > 1024:
           gy = int(by / 1024) + 1
           by = 1024
-
         startn0 = numpy.int32(0)
         startn1 = numpy.int32(layers[0])
-
-        multiply_them_index(nodes_gpu, w0_gpu, nodes_gpu, n_NP, numpy.int32(bx) ,numpy.int32(len(w0)) , startn0, startn1, block=(bx,by,1), grid=(gx,gy))
+        startw = numpy.int32(0)
+        multiply_them_index2(nodes_gpu, weights_gpu, nodes_gpu, n_NP, numpy.int32(bx) ,numpy.int32(len(w0)) , startn0, startn1,
+                             startw, block=(bx,by,1), grid=(gx,gy))
 
         bx = layers[1]
         gx = 1
@@ -61,9 +66,9 @@ class Net():
         gy = 1
 
         startn0 = numpy.int32(layers[0])
-        startn1 = startn0 + layers[1]
-
-        multiply_them_index(nodes_gpu, w1_gpu, nodes_gpu, n_NP, numpy.int32(bx), numpy.int32(len(w1)), startn0, startn1, block=(bx,by,1), grid=(gx,gy))
+        startn1 = numpy.int32(layers[0] + layers[1])
+        startW = numpy.int32(layers[0] * layers[1])
+        multiply_them_index2(nodes_gpu, weights_gpu, nodes_gpu, n_NP, numpy.int32(bx), numpy.int32(len(w1)), startn0, startn1, startW, block=(bx,by,1), grid=(gx,gy))
 
         startA = numpy.int32(layers[0] + layers[1])
         startD = numpy.int32(0)
@@ -98,6 +103,35 @@ __global__ void multiply_them_index(float *nodesD, float *weights, float *nodesA
     t += weights[(row * ncA) + i] * nodesA[startn0 + col + (i * ncB)];
   }
     nodesD[startn1 + (row * ncB) + col] = t;
+  }
+}
+
+  __global__ void multiply_them_index2(float *nodesD, float *weights, float *nodesA, int ncA, int ncB, int nrA, int startn0, int startD, int startW)
+{
+  int row = threadIdx.y + blockDim.y * blockIdx.y;
+  int col = threadIdx.x + blockDim.x * blockIdx.x;
+  float t = 0;
+  if(col < ncB && row < nrA)
+  {
+  for(int i = 0; i < ncA; i++){
+    t += weights[startW + (row * ncA) + i] * nodesA[startn0 + col + (i * ncB)];
+  }
+    nodesD[startD + (row * ncB) + col] = t;
+  }
+}
+
+
+__global__ void multiply_them_index3(float *nodesD, float *weights, float *nodesA, int ncA, int ncB, int nrA, int startn0, int startD, int startW)
+{
+  int row = threadIdx.y + blockDim.y * blockIdx.y;
+  int col = threadIdx.x + blockDim.x * blockIdx.x;
+  float t = 0;
+  if(col < ncB && row < nrA)
+  {
+  for(int i = 0; i < ncA; i++){
+    t += weights[startW + (row * ncA) + i] * nodesA[startn0 + col + (i * ncB)];
+  }
+    nodesD[startD + (row * ncB) + col] += t;
   }
 }
 
@@ -146,10 +180,13 @@ __global__ void array_mulitply_minus(float *d, float *a, float *b, int startb)
   d[i] = -a[i] * b[startb + i];
 }
 
-__global__ void array_mulitply(float *d, float *a, float *b)
+__global__ void array_mulitply(float *d, float *a, float *b, int startD, int startA, int startB, int length)
 {
   const int i = threadIdx.x + (blockDim.x * blockIdx.x);
-  d[i] = a[i] * b[i];
+  if(i < length)
+  {
+  d[startD + i] = a[startA + i] * b[startB + i];
+  }
 }
 
 
@@ -163,7 +200,7 @@ __global__ void get_output_loss(float *d, float *o, int start, int a)
   }
 }
 
-__global__ void get_node_loss(float *d, float *a, int n, int length)
+__global__ void get_node_loss(float *d, float *a, int n, int startA, int length)
 {
   int i = threadIdx.x + blockDim.x * blockIdx.x;
   float t = 0;
@@ -171,7 +208,7 @@ __global__ void get_node_loss(float *d, float *a, int n, int length)
   {
     if(i < length)
     {
-    t += a[i + j*length];
+    t += a[startA + i + j*length];
     }
   }
   if(i < length)
@@ -224,6 +261,7 @@ __global__ void add_them(float* d, float *a, int length)
     d[i] = d[i] + a[i];
   }
 }
+
 
 __global__ void minus_them(float *d, float *a)
 {
@@ -283,6 +321,8 @@ MAX_THREADS_PER_BLOCK = \
 
 multiply_them = mod.get_function("multiply_them")
 multiply_them_index = mod.get_function("multiply_them_index")
+multiply_them_index2 = mod.get_function("multiply_them_index2")
+multiply_them_index3 = mod.get_function("multiply_them_index3") #adds to result
 multiply_them_add = mod.get_function("multiply_them_add")
 optimize = mod.get_function("optimize")
 minus_them = mod.get_function("minus_them")
@@ -396,6 +436,29 @@ cuda.memcpy_htod(w0_gpu, w0)
 w1_gpu = cuda.mem_alloc(w1.nbytes)
 cuda.memcpy_htod(w1_gpu, w1)
 
+numberOfWeights = 0
+for i in range(len(layers)-1):
+  numberOfWeights += layers[i] * layers[i+1]
+
+weights = numpy.zeros((numberOfWeights, 1),dtype=numpy.float32)
+grads = numpy.zeros((numberOfWeights, 1),dtype=numpy.float32)
+
+for y in range(len(w0)):
+  for x in range(len(w0[0])):
+    weights[y * len(w0[0]) + x] = w0[y][x]
+
+start = len(w0) * len(w0[0])
+for y in range(len(w1)):
+  for x in range(len(w1[0])):
+    weights[start + y * len(w1[0]) + x] = w1[y][x]
+
+weights_gpu = cuda.mem_alloc(weights.nbytes)
+cuda.memcpy_htod(weights_gpu,weights)
+grads_gpu = cuda.mem_alloc(grads.nbytes)
+cuda.memcpy_htod(grads_gpu,grads)
+loss_gpu = cuda.mem_alloc(grads.nbytes)
+cuda.memcpy_htod(loss_gpu,grads)
+
 # --- training ---
 
 w0grads = numpy.zeros_like(w0)
@@ -443,7 +506,7 @@ for epoch in range(1):
 
   correct = 0
   start_time = time.time()
-  for i in range(len(img_train)): 
+  for i in range(len(img_train)):  #x
     trainImg = img_train[i]
     trainImg32 = trainImg.astype(numpy.float32)
     cuda.memcpy_htod(img_gpu,trainImg32)
@@ -485,60 +548,49 @@ for epoch in range(1):
       if bx > by:
         bxn = int(1024 / by)
         gx = int(bx / bxn) + 1
-
-    
+        
     #int ncA, int ncB, int nrA
-    startn1 = numpy.int32(layers[0])
-    startn0 = numpy.int32(0)
-    multiply_them_index(w1grads_gpu, outputLossInput_gpu, nodes_gpu, n_NP, numpy.int32(bx), numpy.int32(10), startn1, startn0, block=(bxn,by,1), grid=(gx,gy)) #changethis
-
-    length = len(w1) * len(w1[0])
+    startn0 = numpy.int32(layers[0])
+    startD = numpy.int32(layers[0] * layers[1])
+    startW = numpy.int32(0)
+    #multiply_them_index2(float *nodesD, float *weights, float *nodesA, int ncA, int ncB, int nrA, int startn0, int startD, int startW)
+    multiply_them_index3(grads_gpu, outputLossInput_gpu, nodes_gpu, n_NP, numpy.int32(bx), numpy.int32(10), startn0, startD, startW, block=(bxn,by,1), grid=(gx,gy)) 
+    
+    #backward first weights ???
+    length = layers[1] * layers[2]
     bx = length
     gx = 1
     if bx > 1024:
       gx = int(bx / 1024) + 1
       bx = 1024
-    add_them(w1gradsBatch_gpu, w1grads_gpu,numpy.int32(length),block=(bx,1,1),grid=(gx,1))
+    startD = numpy.int32(layers[0] * layers[1])
+    startA = numpy.int32(layers[0] * layers[1])
+    startB = numpy.int32(layers[0] * layers[1])
+    array_mulitply(loss_gpu,weights_gpu,grads_gpu,startD,startA,startB,numpy.int32(length),block=(bx,1,1),grid=(gx,1))
 
-    #backward first weights ???
-    gx = 1
-    bx = layers[1] * layers[2]
-    if bx > 1024:
-      gx = int(bx / 1024) + 1
-      bx = 1024
-
-    array_mulitply(w1Loss_gpu,w1_gpu,w1grads_gpu,block=(bx,1,1),grid=(gx,1))
-
-    bx = layers[1]
+    startA = numpy.int32(layers[0] * layers[1])
+    length = layers[1]  
+    bx = length
     gx = 1
     if bx > 1024:
       gx = int(bx / 1024) + 1
       bx = 1024
-    get_node_loss(totalErrors_gpu,w1Loss_gpu,numpy.int32(layers[2]),numpy.int32(layers[1]),block=(bx,1,1),grid=(gx,1))
+    get_node_loss(totalErrors_gpu,loss_gpu,numpy.int32(layers[2]),startA,numpy.int32(length),block=(bx,1,1),grid=(gx,1))
 
     startB = numpy.int32(layers[0])
     startC = numpy.int32(0)
-    get_grads(w0grads_gpu,totalErrors_gpu,nodesInput_gpu,nodes_gpu,startB,startC,block=(layers[0],1,1),grid=(layers[1],1))
+    get_grads(grads_gpu,totalErrors_gpu,nodesInput_gpu,nodes_gpu,startB,startC,block=(layers[0],1,1),grid=(layers[1],1))
+
 
     if i % batchSize == 0 or i == (len(img_train) - 1):
-      #optimize
-      length = layers[0] * layers[1]
+      length = layers[1] * layers[2] + layers[0] * layers[1]
       bx = length
       gx = 1
       if bx > 1024:
         gx = int(bx / 1024) + 1
         bx = 1024
-      optimize(w0_gpu,w0grads_gpu,learningRate, numpy.int32(length), block=(bx,1,1),grid=(gx,1))
-      reset_values(w0grads_gpu,numpy.int32(length),block=(bx,1,1),grid=(gx,1))
-
-      length = layers[1] * layers[2]
-      bx = length
-      gx = 1
-      if bx > 1024:
-        gx = int(bx / 1024) + 1
-        bx = 1024
-      optimize(w1_gpu, w1gradsBatch_gpu,learningRate, numpy.int32(length), block=(bx,1,1),grid=(gx,1))
-      reset_values(w1gradsBatch_gpu,numpy.int32(length),block=(bx,1,1),grid=(gx,1))
+      optimize(weights_gpu, grads_gpu,learningRate, numpy.int32(length), block=(bx,1,1),grid=(gx,1))
+      reset_values(grads_gpu,numpy.int32(length),block=(bx,1,1),grid=(gx,1))
       
 
   print("--- %s seconds ---" % (time.time() - start_time))
@@ -550,7 +602,7 @@ for epoch in range(1):
 
 correct = 0
 start_time = time.time()
-for i in range(len(img_test)): 
+for i in range(len(img_test)):
   testImg = img_test[i]
   testImg32 = testImg.astype(numpy.float32)
   
