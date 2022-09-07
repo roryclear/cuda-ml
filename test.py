@@ -13,81 +13,153 @@ class Net():
     #This defines the structure of the NN.
     def __init__(self):
         super(Net, self).__init__()
-        self.weights = [[[]]]
+        self.weights = []
+        self.nodes = []
+        self.grads = []
+
+    def copyGradsToDevice(self):
+      cuda.memcpy_htod(grads_gpu,self.grads)
         
+    def copyWeightsToDevice(self):
+      cuda.memcpy_htod(weights_gpu,self.weights)
+
+    def copyNodesToDevice(self):
+      cuda.memcpy_htod(nodes_gpu,self.nodes)
+
+    def backward(self):
+      length = len(nodesInput)
+      bx = length
+      gx = 1
+      if bx > 1024:
+        gx = int(bx / 1024) + 1
+        bx = 1024
+      der_sigmoid(nodesInput_gpu,nodes_gpu, numpy.int32(length),block=(bx,1,1),grid=(gx,1))
+
+      start = numpy.int32(layers[0] + layers[1])
+      check_answer(training_correct_gpu, nodes_gpu, start, numpy.int32(label_train[i]),block=(1,1,1))
+
+      #backward
+      start = numpy.int32(layers[0] + layers[1])
+      get_output_loss(outputLoss_gpu, nodes_gpu, start, numpy.int32(label_train[i]), block=(layers[2],1,1))
+      
+      startB = numpy.int32(layers[0] + layers[1])
+      array_mulitply_minus(outputLossInput_gpu,outputLoss_gpu,nodesInput_gpu, startB,block=(len(outputLoss),1,1))
+
+      n = 1
+      n_NP = numpy.int32(n)
+
+      bx = layers[1]
+      by = len(outputLoss)
+      gx = 1
+      gy = 1
+
+      bxn = bx
+      byn = by
+
+      if bx*by > 1024:
+        if bx > by:
+          bxn = int(1024 / by)
+          gx = int(bx / bxn) + 1
+          
+      #int ncA, int ncB, int nrA
+      startn0 = numpy.int32(layers[0])
+      startD = numpy.int32(layers[0] * layers[1])
+      startW = numpy.int32(0)
+      #multiply_them_index2(float *nodesD, float *weights, float *nodesA, int ncA, int ncB, int nrA, int startn0, int startD, int startW)
+      multiply_them_index3(grads_gpu, outputLossInput_gpu, nodes_gpu, n_NP, numpy.int32(bx), numpy.int32(10), startn0, startD, startW, block=(bxn,by,1), grid=(gx,gy)) 
+      
+      #backward first weights ???
+      length = layers[1] * layers[2]
+      bx = length
+      gx = 1
+      if bx > 1024:
+        gx = int(bx / 1024) + 1
+        bx = 1024
+      startD = numpy.int32(layers[0] * layers[1])
+      startA = numpy.int32(layers[0] * layers[1])
+      startB = numpy.int32(layers[0] * layers[1])
+      array_mulitply(loss_gpu,weights_gpu,grads_gpu,startD,startA,startB,numpy.int32(length),block=(bx,1,1),grid=(gx,1))
+
+      startA = numpy.int32(layers[0] * layers[1])
+      length = layers[1]  
+      bx = length
+      gx = 1
+      if bx > 1024:
+        gx = int(bx / 1024) + 1
+        bx = 1024
+      get_node_loss(totalErrors_gpu,loss_gpu,numpy.int32(layers[2]),startA,numpy.int32(length),block=(bx,1,1),grid=(gx,1))
+
+      startB = numpy.int32(layers[0])
+      startC = numpy.int32(0)
+      get_grads(grads_gpu,totalErrors_gpu,nodesInput_gpu,nodes_gpu,startB,startC,block=(layers[0],1,1),grid=(layers[1],1))
+
     def forward(self):
 
-        #copy input (n0_gpu) to nodes_gpu
-        length = layers[0]
-        bx = length
-        gx = 1
-        if bx > 1024:
-          gx = int(bx / 1024) + 1
-          bx = 1024
-        
-        copy(nodes_gpu, img_gpu, numpy.int32(0), numpy.int32(0), numpy.int32(length), block=(bx,1,1), grid=(gx,1))
+      #copy input (n0_gpu) to nodes_gpu
+      length = layers[0]
+      bx = length
+      gx = 1
+      if bx > 1024:
+        gx = int(bx / 1024) + 1
+        bx = 1024
+      
+      copy(nodes_gpu, img_gpu, numpy.int32(0), numpy.int32(0), numpy.int32(length), block=(bx,1,1), grid=(gx,1))
 
-        
-        #checking something here
-        #cuda.memcpy_dtoh(nodes,nodes_gpu)
-        #print("nodes[0] =",nodes[0])
-        #print("startw =",startw)
+      
+      n = len(w0[0]) # number of columns in A / number of rows in B
+      n_NP = numpy.int32(n)
+      bx = 1 # number of cols in B
+      by = len(w0) # number of rows in A
+      gx = 1
+      gy = 1
+      if by > 1024:
+        gy = int(by / 1024) + 1
+        by = 1024
+      startn0 = numpy.int32(0)
+      startn1 = numpy.int32(layers[0])
+      startw = numpy.int32(0)
+      multiply_them_index2(nodes_gpu, weights_gpu, nodes_gpu, n_NP, numpy.int32(bx) ,numpy.int32(len(w0)) , startn0, startn1,
+                            startw, block=(bx,by,1), grid=(gx,gy))
 
+      bx = layers[1]
+      gx = 1
+      if bx > 1024:
+        gx = int(bx / 1024) + 1
+        bx = 1024
 
-        n = len(w0[0]) # number of columns in A / number of rows in B
-        n_NP = numpy.int32(n)
-        bx = 1 # number of cols in B
-        by = len(w0) # number of rows in A
-        gx = 1
-        gy = 1
-        if by > 1024:
-          gy = int(by / 1024) + 1
-          by = 1024
-        startn0 = numpy.int32(0)
-        startn1 = numpy.int32(layers[0])
-        startw = numpy.int32(0)
-        multiply_them_index2(nodes_gpu, weights_gpu, nodes_gpu, n_NP, numpy.int32(bx) ,numpy.int32(len(w0)) , startn0, startn1,
-                             startw, block=(bx,by,1), grid=(gx,gy))
+      sigmoid_index(nodes_gpu,numpy.int32(layers[0]),numpy.int32(layers[1]), block=(bx,1,1), grid=(gx,1))
 
-        bx = layers[1]
-        gx = 1
-        if bx > 1024:
-          gx = int(bx / 1024) + 1
-          bx = 1024
+      n = len(w1[0])
+      n_NP = numpy.int32(n)
 
-        sigmoid_index(nodes_gpu,numpy.int32(layers[0]),numpy.int32(layers[1]), block=(bx,1,1), grid=(gx,1))
+      bx = 1 # number of cols in B
+      by = len(w1) # number of rows in A
+      gx = 1
+      gy = 1
 
-        n = len(w1[0])
-        n_NP = numpy.int32(n)
+      startn0 = numpy.int32(layers[0])
+      startn1 = numpy.int32(layers[0] + layers[1])
+      startW = numpy.int32(layers[0] * layers[1])
+      multiply_them_index2(nodes_gpu, weights_gpu, nodes_gpu, n_NP, numpy.int32(bx), numpy.int32(len(w1)), startn0, startn1, startW, block=(bx,by,1), grid=(gx,gy))
 
-        bx = 1 # number of cols in B
-        by = len(w1) # number of rows in A
-        gx = 1
-        gy = 1
+      startA = numpy.int32(layers[0] + layers[1])
+      startD = numpy.int32(0)
+      length = layers[2]
+      bx = length
+      gx = 1
+      if bx > 1024:
+        gx = int(bx / 1024) + 1
+        bx = 1024
 
-        startn0 = numpy.int32(layers[0])
-        startn1 = numpy.int32(layers[0] + layers[1])
-        startW = numpy.int32(layers[0] * layers[1])
-        multiply_them_index2(nodes_gpu, weights_gpu, nodes_gpu, n_NP, numpy.int32(bx), numpy.int32(len(w1)), startn0, startn1, startW, block=(bx,by,1), grid=(gx,gy))
-
-        startA = numpy.int32(layers[0] + layers[1])
-        startD = numpy.int32(0)
-        length = layers[2]
-        bx = length
-        gx = 1
-        if bx > 1024:
-          gx = int(bx / 1024) + 1
-          bx = 1024
-
-        start = numpy.int32(layers[0] + layers[1])
-        length = numpy.int32(layers[2])
-        bx = int(length)
-        gx = 1
-        if bx > 1024:
-          gx = int(bx / 1024) + 1
-          bx = 1024
-        sigmoid_index(nodes_gpu, start, length, block=(bx,1,1), grid=(gx,1))
-        return 0
+      start = numpy.int32(layers[0] + layers[1])
+      length = numpy.int32(layers[2])
+      bx = int(length)
+      gx = 1
+      if bx > 1024:
+        gx = int(bx / 1024) + 1
+        bx = 1024
+      sigmoid_index(nodes_gpu, start, length, block=(bx,1,1), grid=(gx,1))
+      return 0
 
 mod = comp.SourceModule(
     """
@@ -341,30 +413,6 @@ check_answer = mod.get_function("check_answer")
 add_them = mod.get_function("add_them")
 copy = mod.get_function("copy")
 
-# --- testing cuda matrix multiplication ---
-weights = numpy.random.rand(10,784).astype(numpy.float32)
-weights_gpu = cuda.mem_alloc(weights.nbytes)
-cuda.memcpy_htod(weights_gpu, weights)
-
-input = numpy.random.rand(784,4).astype(numpy.float32)
-input_gpu = cuda.mem_alloc(input.nbytes)
-cuda.memcpy_htod(input_gpu, input)
-
-nodes = numpy.empty((10,4),dtype=numpy.float32); nodes.fill(0)
-nodes2 = numpy.zeros_like(nodes)
-nodes_gpu = cuda.mem_alloc(nodes.nbytes)
-cuda.memcpy_htod(nodes_gpu, nodes)
-
-nrA = 10
-ncA = 784
-nrB = 784
-ncB = 4
-
-nodes = numpy.matmul(weights,input)
-multiply_them(nodes_gpu,weights_gpu,input_gpu, numpy.int32(ncA), numpy.int32(ncB), block=(ncB,nrA,1), grid=(1,1))
-cuda.memcpy_dtoh(nodes2, nodes_gpu)
-for i in range(len(nodes)):
-  print(nodes[i], " -> ", nodes2[i])
 
 #---- mnist stuff ---- 
 
@@ -373,15 +421,11 @@ for i in range(len(nodes)):
 img_train = img_train / 255
 img_test = img_test / 255
 
-layers = [784,16,10]
+layers = [784,20,10]
 
 numberOfNodes = 0
 for i in range(len(layers)):
   numberOfNodes += layers[i]
-
-nodes = numpy.zeros((numberOfNodes, 1),dtype=numpy.float32)
-nodes_gpu = cuda.mem_alloc(nodes.nbytes)
-cuda.memcpy_htod(nodes_gpu,nodes)
 
 nodesInput = numpy.zeros((numberOfNodes, 1),dtype=numpy.float32)
 nodesInput_gpu = cuda.mem_alloc(nodesInput.nbytes)
@@ -417,15 +461,23 @@ else:
     weights[x] = numpy.random.uniform() * (2 / numpy.sqrt(layers[0])) - 1 / numpy.sqrt(layers[0])
 
 testNet = Net()
-testNet.weights[0] = w0
-testNet.weights.append(w1)
-
+testNet.weights = weights
+testNet.grads = grads
 weights_gpu = cuda.mem_alloc(weights.nbytes)
-cuda.memcpy_htod(weights_gpu,weights)
+testNet.copyWeightsToDevice()
+grads_gpu = cuda.mem_alloc(grads.nbytes)
+testNet.copyGradsToDevice()
+
+nodes = numpy.zeros((numberOfNodes, 1),dtype=numpy.float32)
+testNet.nodes = nodes
+nodes_gpu = cuda.mem_alloc(nodes.nbytes)
+testNet.copyNodesToDevice()
+
 grads_gpu = cuda.mem_alloc(grads.nbytes)
 cuda.memcpy_htod(grads_gpu,grads)
 loss_gpu = cuda.mem_alloc(grads.nbytes)
 cuda.memcpy_htod(loss_gpu,grads)
+
 
 # --- training ---
 
@@ -468,71 +520,7 @@ for epoch in range(1):
 
     testNet.forward()
 
-    length = len(nodesInput)
-    bx = length
-    gx = 1
-    if bx > 1024:
-      gx = int(bx / 1024) + 1
-      bx = 1024
-    der_sigmoid(nodesInput_gpu,nodes_gpu, numpy.int32(length),block=(bx,1,1),grid=(gx,1))
-
-    start = numpy.int32(layers[0] + layers[1])
-    check_answer(training_correct_gpu, nodes_gpu, start, numpy.int32(label_train[i]),block=(1,1,1))
-
-    #backward
-    start = numpy.int32(layers[0] + layers[1])
-    get_output_loss(outputLoss_gpu, nodes_gpu, start, numpy.int32(label_train[i]), block=(layers[2],1,1))
-    
-    startB = numpy.int32(layers[0] + layers[1])
-    array_mulitply_minus(outputLossInput_gpu,outputLoss_gpu,nodesInput_gpu, startB,block=(len(outputLoss),1,1))
-
-    n = 1
-    n_NP = numpy.int32(n)
-
-    bx = layers[1]
-    by = len(outputLoss)
-    gx = 1
-    gy = 1
-
-    bxn = bx
-    byn = by
-
-    if bx*by > 1024:
-      if bx > by:
-        bxn = int(1024 / by)
-        gx = int(bx / bxn) + 1
-        
-    #int ncA, int ncB, int nrA
-    startn0 = numpy.int32(layers[0])
-    startD = numpy.int32(layers[0] * layers[1])
-    startW = numpy.int32(0)
-    #multiply_them_index2(float *nodesD, float *weights, float *nodesA, int ncA, int ncB, int nrA, int startn0, int startD, int startW)
-    multiply_them_index3(grads_gpu, outputLossInput_gpu, nodes_gpu, n_NP, numpy.int32(bx), numpy.int32(10), startn0, startD, startW, block=(bxn,by,1), grid=(gx,gy)) 
-    
-    #backward first weights ???
-    length = layers[1] * layers[2]
-    bx = length
-    gx = 1
-    if bx > 1024:
-      gx = int(bx / 1024) + 1
-      bx = 1024
-    startD = numpy.int32(layers[0] * layers[1])
-    startA = numpy.int32(layers[0] * layers[1])
-    startB = numpy.int32(layers[0] * layers[1])
-    array_mulitply(loss_gpu,weights_gpu,grads_gpu,startD,startA,startB,numpy.int32(length),block=(bx,1,1),grid=(gx,1))
-
-    startA = numpy.int32(layers[0] * layers[1])
-    length = layers[1]  
-    bx = length
-    gx = 1
-    if bx > 1024:
-      gx = int(bx / 1024) + 1
-      bx = 1024
-    get_node_loss(totalErrors_gpu,loss_gpu,numpy.int32(layers[2]),startA,numpy.int32(length),block=(bx,1,1),grid=(gx,1))
-
-    startB = numpy.int32(layers[0])
-    startC = numpy.int32(0)
-    get_grads(grads_gpu,totalErrors_gpu,nodesInput_gpu,nodes_gpu,startB,startC,block=(layers[0],1,1),grid=(layers[1],1))
+    testNet.backward()
 
 
     if i % batchSize == 0 or i == (len(img_train) - 1):
@@ -562,7 +550,7 @@ for i in range(len(img_test)):
   cuda.memcpy_htod(img_gpu, testImg32)
 
   testNet.forward()
-
+  start = numpy.int32(layers[0] + layers[1])
   check_answer(test_correct_gpu, nodes_gpu, start, numpy.int32(label_test[i]),block=(1,1,1))
   #guess = output.index(max(output))
   #print("guess = ",guess)
