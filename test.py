@@ -431,11 +431,6 @@ testNet = Net()
 testNet.weights[0] = w0
 testNet.weights.append(w1)
 
-w0_gpu = cuda.mem_alloc(w0.nbytes)
-cuda.memcpy_htod(w0_gpu, w0)
-w1_gpu = cuda.mem_alloc(w1.nbytes)
-cuda.memcpy_htod(w1_gpu, w1)
-
 numberOfWeights = 0
 for i in range(len(layers)-1):
   numberOfWeights += layers[i] * layers[i+1]
@@ -460,21 +455,6 @@ loss_gpu = cuda.mem_alloc(grads.nbytes)
 cuda.memcpy_htod(loss_gpu,grads)
 
 # --- training ---
-
-w0grads = numpy.zeros_like(w0)
-w1grads = numpy.zeros_like(w1)
-w1Loss = numpy.zeros_like(w1)
-
-w1grads_gpu = cuda.mem_alloc(w1grads.nbytes)
-w1gradsBatch_gpu = cuda.mem_alloc(w1grads.nbytes)
-cuda.memcpy_htod(w1grads_gpu,w1grads)
-cuda.memcpy_htod(w1gradsBatch_gpu,w1grads)
-
-w1Loss_gpu = cuda.mem_alloc(w1Loss.nbytes)
-cuda.memcpy_htod(w1Loss_gpu,w1Loss)
-
-w0grads_gpu = cuda.mem_alloc(w0grads.nbytes)
-cuda.memcpy_htod(w0grads_gpu,w0grads)
 
 outputLoss = numpy.zeros((layers[2]),dtype=numpy.float32)
 outputLoss_gpu = cuda.mem_alloc(outputLoss.nbytes)
