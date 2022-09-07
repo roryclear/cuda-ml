@@ -26,6 +26,24 @@ class Net():
     def copyNodesToDevice(self):
       cuda.memcpy_htod(nodes_gpu,self.nodes)
 
+    def optimize(self):
+      length = layers[1] * layers[2] + layers[0] * layers[1]
+      bx = length
+      gx = 1
+      if bx > 1024:
+        gx = int(bx / 1024) + 1
+        bx = 1024
+      optimize(weights_gpu, grads_gpu,learningRate, numpy.int32(length), block=(bx,1,1),grid=(gx,1))
+
+    def zero_grad(self):
+      length = layers[1] * layers[2] + layers[0] * layers[1]
+      bx = length
+      gx = 1
+      if bx > 1024:
+        gx = int(bx / 1024) + 1
+        bx = 1024
+      reset_values(grads_gpu,numpy.int32(length),block=(bx,1,1),grid=(gx,1))
+  
     def backward(self):
       length = len(nodesInput)
       bx = length
@@ -421,7 +439,7 @@ copy = mod.get_function("copy")
 img_train = img_train / 255
 img_test = img_test / 255
 
-layers = [784,20,10]
+layers = [784,16,10]
 
 numberOfNodes = 0
 for i in range(len(layers)):
@@ -521,17 +539,19 @@ for epoch in range(1):
     testNet.forward()
 
     testNet.backward()
+    
 
 
     if i % batchSize == 0 or i == (len(img_train) - 1):
+      testNet.optimize()
       length = layers[1] * layers[2] + layers[0] * layers[1]
       bx = length
       gx = 1
       if bx > 1024:
         gx = int(bx / 1024) + 1
         bx = 1024
-      optimize(weights_gpu, grads_gpu,learningRate, numpy.int32(length), block=(bx,1,1),grid=(gx,1))
-      reset_values(grads_gpu,numpy.int32(length),block=(bx,1,1),grid=(gx,1))
+      
+      testNet.zero_grad()
       
 
   print("--- %s seconds ---" % (time.time() - start_time))
