@@ -390,47 +390,6 @@ cuda.memcpy_htod(nodesInput_gpu,nodesInput)
 w0=numpy.empty((layers[1],layers[0])).astype(numpy.float32); w0.fill(1)
 w1=numpy.empty((layers[2],layers[1])).astype(numpy.float32); w1.fill(1)
 
-weightsFile = "sigmoid-untrained-weights"
-#weightsFile = "sigmoid-weights"
-
-for i in range(len(layers) - 1):
-  weightsFile += str(layers[i]) + "-"
-weightsFile += str(layers[len(layers)-1]) + ".txt"
-
-if exists(weightsFile):
-  f = open(weightsFile, "r")
-  lines = f.readlines()[1:785]
-  i = 0
-  for line in lines:
-    line = line.replace("\n","")
-    array = line.split(",")
-    for j in range(len(array)):
-      w0[j][i] = array[j]
-    i+=1
-
-  f = open(weightsFile, "r")
-  lines = f.readlines()[785:]
-  i = 0
-  for line in lines:
-    line = line.replace("\n","")
-    array = line.split(",")
-    for j in range(len(array)):
-      w1[j][i] = array[j]
-    i+=1
-
-else:
-  for a in range(len(w1)):
-    for b in range(len(w1[0])):
-      w1[a][b] = numpy.random.uniform() * (2 / numpy.sqrt(layers[1])) - 1 / numpy.sqrt(layers[1])
-  for a in range(len(w0)):
-    for b in range(len(w0[0])):
-      w0[a][b] = numpy.random.uniform() * (2 / numpy.sqrt(layers[0])) - 1 / numpy.sqrt(layers[0])
-
-
-testNet = Net()
-testNet.weights[0] = w0
-testNet.weights.append(w1)
-
 numberOfWeights = 0
 for i in range(len(layers)-1):
   numberOfWeights += layers[i] * layers[i+1]
@@ -438,14 +397,28 @@ for i in range(len(layers)-1):
 weights = numpy.zeros((numberOfWeights, 1),dtype=numpy.float32)
 grads = numpy.zeros((numberOfWeights, 1),dtype=numpy.float32)
 
-for y in range(len(w0)):
-  for x in range(len(w0[0])):
-    weights[y * len(w0[0]) + x] = w0[y][x]
+weightsFile = "sigmoid-untrained-weights"
+#weightsFile = "sigmoid-weights"
 
-start = len(w0) * len(w0[0])
-for y in range(len(w1)):
-  for x in range(len(w1[0])):
-    weights[start + y * len(w1[0]) + x] = w1[y][x]
+for i in range(len(layers) - 1):
+  weightsFile += str(layers[i]) + "-"
+weightsFile += str(layers[len(layers)-1]) + "-1d.txt"
+
+if exists(weightsFile):
+  f = open(weightsFile, "r")
+  lines = f.readlines()
+  for i in range(len(lines)):
+    line = lines[i].replace("\n","")
+    weights[i] = line
+
+else:
+  print("no weights file was found")    
+  for x in range(len(weights)):
+    weights[x] = numpy.random.uniform() * (2 / numpy.sqrt(layers[0])) - 1 / numpy.sqrt(layers[0])
+
+testNet = Net()
+testNet.weights[0] = w0
+testNet.weights.append(w1)
 
 weights_gpu = cuda.mem_alloc(weights.nbytes)
 cuda.memcpy_htod(weights_gpu,weights)
