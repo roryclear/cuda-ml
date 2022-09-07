@@ -27,7 +27,7 @@ class Net():
       cuda.memcpy_htod(nodes_gpu,self.nodes)
 
     def optimize(self):
-      length = layers[1] * layers[2] + layers[0] * layers[1]
+      length = len(weights)
       bx = length
       gx = 1
       if bx > 1024:
@@ -36,7 +36,7 @@ class Net():
       optimize(weights_gpu, grads_gpu,learningRate, numpy.int32(length), block=(bx,1,1),grid=(gx,1))
 
     def zero_grad(self):
-      length = layers[1] * layers[2] + layers[0] * layers[1]
+      length = len(weights)
       bx = length
       gx = 1
       if bx > 1024:
@@ -73,7 +73,6 @@ class Net():
 
       bxn = bx
       byn = by
-
       if bx*by > 1024:
         if bx > by:
           bxn = int(1024 / by)
