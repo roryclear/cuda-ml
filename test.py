@@ -83,7 +83,7 @@ class Net():
       startD = numpy.int32(layers[0] * layers[1])
       startW = numpy.int32(0)
       #multiply_them_index2(float *nodesD, float *weights, float *nodesA, int ncA, int ncB, int nrA, int startn0, int startD, int startW)
-      multiply_them_index3(grads_gpu, outputLossInput_gpu, nodes_gpu, n_NP, numpy.int32(bx), numpy.int32(10), startn0, startD, startW, block=(bxn,by,1), grid=(gx,gy)) 
+      multiply_them_index_add(grads_gpu, outputLossInput_gpu, nodes_gpu, n_NP, numpy.int32(bx), numpy.int32(10), startn0, startD, startW, block=(bxn,by,1), grid=(gx,gy)) 
       
       #backward first weights ???
       length = layers[1] * layers[2]
@@ -135,7 +135,7 @@ class Net():
       startn0 = numpy.int32(0)
       startn1 = numpy.int32(layers[0])
       startw = numpy.int32(0)
-      multiply_them_index2(nodes_gpu, weights_gpu, nodes_gpu, n_NP, numpy.int32(bx) ,numpy.int32(len(w0)) , startn0, startn1,
+      multiply_them_index(nodes_gpu, weights_gpu, nodes_gpu, n_NP, numpy.int32(bx) ,numpy.int32(len(w0)) , startn0, startn1,
                             startw, block=(bx,by,1), grid=(gx,gy))
 
       bx = layers[1]
@@ -157,7 +157,7 @@ class Net():
       startn0 = numpy.int32(layers[0])
       startn1 = numpy.int32(layers[0] + layers[1])
       startW = numpy.int32(layers[0] * layers[1])
-      multiply_them_index2(nodes_gpu, weights_gpu, nodes_gpu, n_NP, numpy.int32(bx), numpy.int32(len(w1)), startn0, startn1, startW, block=(bx,by,1), grid=(gx,gy))
+      multiply_them_index(nodes_gpu, weights_gpu, nodes_gpu, n_NP, numpy.int32(bx), numpy.int32(len(w1)), startn0, startn1, startW, block=(bx,by,1), grid=(gx,gy))
 
       startA = numpy.int32(layers[0] + layers[1])
       startD = numpy.int32(0)
@@ -180,22 +180,7 @@ class Net():
 
 mod = comp.SourceModule(
     """
-__global__ void multiply_them_index(float *nodesD, float *weights, float *nodesA, int ncA, int ncB, int nrA, int startn0, int startn1)
-{
-  int row = threadIdx.y + blockDim.y * blockIdx.y;
-  int col = threadIdx.x + blockDim.x * blockIdx.x;
-
-  float t = 0;
-  if(col < ncB && row < nrA)
-  {
-  for(int i = 0; i < ncA; i++){
-    t += weights[(row * ncA) + i] * nodesA[startn0 + col + (i * ncB)];
-  }
-    nodesD[startn1 + (row * ncB) + col] = t;
-  }
-}
-
-  __global__ void multiply_them_index2(float *nodesD, float *weights, float *nodesA, int ncA, int ncB, int nrA, int startn0, int startD, int startW)
+  __global__ void multiply_them_index(float *nodesD, float *weights, float *nodesA, int ncA, int ncB, int nrA, int startn0, int startD, int startW)
 {
   int row = threadIdx.y + blockDim.y * blockIdx.y;
   int col = threadIdx.x + blockDim.x * blockIdx.x;
@@ -210,7 +195,7 @@ __global__ void multiply_them_index(float *nodesD, float *weights, float *nodesA
 }
 
 
-__global__ void multiply_them_index3(float *nodesD, float *weights, float *nodesA, int ncA, int ncB, int nrA, int startn0, int startD, int startW)
+__global__ void multiply_them_index_add(float *nodesD, float *weights, float *nodesA, int ncA, int ncB, int nrA, int startn0, int startD, int startW)
 {
   int row = threadIdx.y + blockDim.y * blockIdx.y;
   int col = threadIdx.x + blockDim.x * blockIdx.x;
@@ -410,8 +395,7 @@ MAX_THREADS_PER_BLOCK = \
 
 multiply_them = mod.get_function("multiply_them")
 multiply_them_index = mod.get_function("multiply_them_index")
-multiply_them_index2 = mod.get_function("multiply_them_index2")
-multiply_them_index3 = mod.get_function("multiply_them_index3") #adds to result
+multiply_them_index_add = mod.get_function("multiply_them_index_add") #adds to result
 multiply_them_add = mod.get_function("multiply_them_add")
 optimize = mod.get_function("optimize")
 minus_them = mod.get_function("minus_them")
