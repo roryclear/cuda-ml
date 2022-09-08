@@ -130,10 +130,10 @@ class Net():
       copy(nodes_gpu, img_gpu, numpy.int32(0), numpy.int32(0), numpy.int32(length), block=(bx,1,1), grid=(gx,1))
 
       
-      n = len(w0[0]) # number of columns in A / number of rows in B
+      n = self.layers[0] # number of columns in A / number of rows in B
       n_NP = numpy.int32(n)
       bx = 1 # number of cols in B
-      by = len(w0) # number of rows in A
+      by = self.layers[1] # number of rows in A
       gx = 1
       gy = 1
       if by > 1024:
@@ -142,7 +142,8 @@ class Net():
       startn0 = numpy.int32(0)
       startn1 = numpy.int32(self.layers[0])
       startw = numpy.int32(0)
-      multiply_them_index(nodes_gpu, weights_gpu, nodes_gpu, n_NP, numpy.int32(bx) ,numpy.int32(len(w0)) , startn0, startn1,
+      multiply_them_index(nodes_gpu, weights_gpu, nodes_gpu, n_NP, numpy.int32(bx) 
+      ,numpy.int32(self.layers[1]) , startn0, startn1,
                             startw, block=(bx,by,1), grid=(gx,gy))
 
       bx = self.layers[1]
@@ -154,11 +155,11 @@ class Net():
       sigmoid_index(nodes_gpu,numpy.int32(self.layers[0]),numpy.int32(self.layers[1]),
                     block=(bx,1,1), grid=(gx,1))
 
-      n = len(w1[0])
+      n = self.layers[1]
       n_NP = numpy.int32(n)
 
       bx = 1 # number of cols in B
-      by = len(w1) # number of rows in A
+      by = self.layers[2] # number of rows in A
       gx = 1
       gy = 1
 
@@ -166,7 +167,7 @@ class Net():
       startn1 = numpy.int32(self.layers[0] + self.layers[1])
       startW = numpy.int32(self.layers[0] * self.layers[1])
       multiply_them_index(nodes_gpu, weights_gpu, nodes_gpu, n_NP, numpy.int32(bx),
-                          numpy.int32(len(w1)), startn0, startn1, startW, block=(bx,by,1), grid=(gx,gy))
+                          numpy.int32(self.layers[2]), startn0, startn1, startW, block=(bx,by,1), grid=(gx,gy))
 
       startA = numpy.int32(self.layers[0] + self.layers[1])
       startD = numpy.int32(0)
@@ -441,9 +442,6 @@ for i in range(len(testNet.layers)):
 nodesInput = numpy.zeros((numberOfNodes, 1),dtype=numpy.float32)
 nodesInput_gpu = cuda.mem_alloc(nodesInput.nbytes)
 cuda.memcpy_htod(nodesInput_gpu,nodesInput)
-
-w0=numpy.empty((testNet.layers[1],testNet.layers[0])).astype(numpy.float32); w0.fill(1)
-w1=numpy.empty((testNet.layers[2],testNet.layers[1])).astype(numpy.float32); w1.fill(1)
 
 numberOfWeights = 0
 for i in range(len(testNet.layers)-1):
