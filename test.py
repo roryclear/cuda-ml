@@ -16,7 +16,6 @@ class Net():
         self.weights = None
         self.nodes = None
         self.grads = None
-        self.outputLoss = None
         self.nodesInput = None
         self.loss = None
         self.totalErrors = None
@@ -24,7 +23,6 @@ class Net():
         self.weights_gpu = None
         self.nodes_gpu = None
         self.grad_gpu = None
-        self.outputLoss_gpu = None
         self.nodesInput_gpu = None
         self.loss_gpu = None
         self.totalErrors_gpu = None
@@ -33,7 +31,6 @@ class Net():
       self.weights_gpu = cuda.mem_alloc(self.weights.nbytes)
       self.nodes_gpu = cuda.mem_alloc(self.nodes.nbytes)
       self.grads_gpu = cuda.mem_alloc(self.grads.nbytes)
-      self.outputLoss_gpu = cuda.mem_alloc(self.outputLoss.nbytes)
       self.nodesInput_gpu = cuda.mem_alloc(self.nodesInput.nbytes)
       self.loss_gpu = cuda.mem_alloc(self.loss.nbytes)
       self.totalErrors_gpu = cuda.mem_alloc(self.totalErrors.nbytes)
@@ -41,7 +38,6 @@ class Net():
       cuda.memcpy_htod(self.nodes_gpu,self.nodes)
       cuda.memcpy_htod(self.weights_gpu,self.weights)
       cuda.memcpy_htod(self.grads_gpu,self.grads)
-      cuda.memcpy_htod(self.outputLoss_gpu,self.outputLoss)
       cuda.memcpy_htod(self.nodesInput_gpu,self.nodesInput)
       cuda.memcpy_htod(self.loss_gpu,self.loss)
       cuda.memcpy_htod(self.totalErrors_gpu,self.totalErrors)
@@ -79,12 +75,12 @@ class Net():
 
       #backward
       start = numpy.int32(self.layers[0] + self.layers[1])
-      get_output_loss(self.outputLoss_gpu, self.nodes_gpu, start, numpy.int32(label_train[i]),
+      get_output_loss(self.loss_gpu, self.nodes_gpu, start, numpy.int32(label_train[i]),
                       block=(self.layers[2],1,1))
       
       startB = numpy.int32(self.layers[0] + self.layers[1])
-      array_mulitply_minus(outputLossInput_gpu,self.outputLoss_gpu,self.nodesInput_gpu, 
-                           startB,block=(len(outputLoss),1,1))
+      array_mulitply_minus(outputLossInput_gpu,self.loss_gpu,self.nodesInput_gpu, 
+                           startB,block=(self.layers[2],1,1))
 
       n = 1
       n_NP = numpy.int32(n)
@@ -283,7 +279,7 @@ __global__ void optimize(float *d, float *a, float lr, int length)
 __global__ void array_mulitply_minus(float *d, float *a, float *b, int startb)
 {
   const int i = threadIdx.x + blockDim.x * blockIdx.x;
-  d[i] = -a[i] * b[startb + i];
+  d[i] = -a[startb + i] * b[startb + i];
 }
 
 __global__ void array_mulitply(float *d, float *a, float *b, int startD, int startA, int startB, int length)
@@ -300,9 +296,9 @@ __global__ void get_output_loss(float *d, float *o, int start, int a)
 {
   int i = threadIdx.x;
   if(i == a) {
-    d[i] = 1 - o[start + i];
+    d[start + i] = 1 - o[start + i];
   } else {
-    d[i] = 0 - o[start + i];
+    d[start + i] = 0 - o[start + i];
   }
 }
 
@@ -498,16 +494,13 @@ testNet.loss = loss
 nodes = numpy.zeros((numberOfNodes, 1),dtype=numpy.float32)
 testNet.nodes = nodes
 
-outputLoss = numpy.zeros((testNet.layers[2]),dtype=numpy.float32)
-testNet.outputLoss = outputLoss
-
 totalErrors = numpy.zeros((testNet.layers[1]),dtype=numpy.float32)
 testNet.totalErrors = totalErrors
 
 testNet.copyToDevice()
 
 # --- training ---
-outputLossInput = numpy.zeros_like(outputLoss) #outputLoss * input
+outputLossInput = numpy.zeros((testNet.layers[2]),dtype=numpy.float32) #outputLoss * input
 outputLossInput_gpu = cuda.mem_alloc(outputLossInput.nbytes)
 cuda.memcpy_htod(outputLossInput_gpu,outputLossInput)
 
