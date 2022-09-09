@@ -90,7 +90,7 @@ class Net():
       n_NP = numpy.int32(n)
 
       bx = self.layers[1]
-      by = len(outputLoss)
+      by = self.layers[2]
       gx = 1
       gy = 1
 
