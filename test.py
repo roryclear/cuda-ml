@@ -13,20 +13,38 @@ class Net():
     #This defines the structure of the NN.
     def __init__(self):
         super(Net, self).__init__()
-        self.weights = []
-        self.nodes = []
-        self.grads = []
+        self.weights = None
+        self.nodes = None
+        self.grads = None
+        self.outputLoss = None
+        self.nodesInput = None
+        self.loss = None
+        self.totalErrors = None
+
         self.weights_gpu = None
         self.nodes_gpu = None
         self.grad_gpu = None
+        self.outputLoss_gpu = None
+        self.nodesInput_gpu = None
+        self.loss_gpu = None
+        self.totalErrors_gpu = None
 
     def copyToDevice(self):
       self.weights_gpu = cuda.mem_alloc(self.weights.nbytes)
       self.nodes_gpu = cuda.mem_alloc(self.nodes.nbytes)
       self.grads_gpu = cuda.mem_alloc(self.grads.nbytes)
+      self.outputLoss_gpu = cuda.mem_alloc(self.outputLoss.nbytes)
+      self.nodesInput_gpu = cuda.mem_alloc(self.nodesInput.nbytes)
+      self.loss_gpu = cuda.mem_alloc(self.loss.nbytes)
+      self.totalErrors_gpu = cuda.mem_alloc(self.totalErrors.nbytes)
+
       cuda.memcpy_htod(self.nodes_gpu,self.nodes)
       cuda.memcpy_htod(self.weights_gpu,self.weights)
       cuda.memcpy_htod(self.grads_gpu,self.grads)
+      cuda.memcpy_htod(self.outputLoss_gpu,self.outputLoss)
+      cuda.memcpy_htod(self.nodesInput_gpu,self.nodesInput)
+      cuda.memcpy_htod(self.loss_gpu,self.loss)
+      cuda.memcpy_htod(self.totalErrors_gpu,self.totalErrors)
 
 
     def optimize(self):
@@ -54,18 +72,18 @@ class Net():
       if bx > 1024:
         gx = int(bx / 1024) + 1
         bx = 1024
-      der_sigmoid(nodesInput_gpu,self.nodes_gpu, numpy.int32(length),block=(bx,1,1),grid=(gx,1))
+      der_sigmoid(self.nodesInput_gpu,self.nodes_gpu, numpy.int32(length),block=(bx,1,1),grid=(gx,1))
 
       start = numpy.int32(self.layers[0] + self.layers[1])
       check_answer(training_correct_gpu, self.nodes_gpu, start, numpy.int32(label_train[i]),block=(1,1,1))
 
       #backward
       start = numpy.int32(self.layers[0] + self.layers[1])
-      get_output_loss(outputLoss_gpu, self.nodes_gpu, start, numpy.int32(label_train[i]),
+      get_output_loss(self.outputLoss_gpu, self.nodes_gpu, start, numpy.int32(label_train[i]),
                       block=(self.layers[2],1,1))
       
       startB = numpy.int32(self.layers[0] + self.layers[1])
-      array_mulitply_minus(outputLossInput_gpu,outputLoss_gpu,nodesInput_gpu, 
+      array_mulitply_minus(outputLossInput_gpu,self.outputLoss_gpu,self.nodesInput_gpu, 
                            startB,block=(len(outputLoss),1,1))
 
       n = 1
@@ -102,7 +120,7 @@ class Net():
       startD = numpy.int32(self.layers[0] * self.layers[1])
       startA = numpy.int32(self.layers[0] * self.layers[1])
       startB = numpy.int32(self.layers[0] * self.layers[1])
-      array_mulitply(loss_gpu,self.weights_gpu,self.grads_gpu,startD,startA,startB,numpy.int32(length)
+      array_mulitply(self.loss_gpu,self.weights_gpu,self.grads_gpu,startD,startA,startB,numpy.int32(length)
       ,block=(bx,1,1),grid=(gx,1))
 
       startA = numpy.int32(self.layers[0] * self.layers[1])
@@ -112,12 +130,12 @@ class Net():
       if bx > 1024:
         gx = int(bx / 1024) + 1
         bx = 1024
-      get_node_loss(totalErrors_gpu,loss_gpu,numpy.int32(self.layers[2]),startA,
+      get_node_loss(self.totalErrors_gpu,self.loss_gpu,numpy.int32(self.layers[2]),startA,
                     numpy.int32(length),block=(bx,1,1),grid=(gx,1))
 
       startB = numpy.int32(self.layers[0])
       startC = numpy.int32(0)
-      get_grads(self.grads_gpu,totalErrors_gpu,nodesInput_gpu, self.nodes_gpu,startB,startC,
+      get_grads(self.grads_gpu,self.totalErrors_gpu,self.nodesInput_gpu, self.nodes_gpu,startB,startC,
                 block=(self.layers[0],1,1),grid=(self.layers[1],1))
 
     def forward(self):
@@ -444,8 +462,7 @@ for i in range(len(testNet.layers)):
   numberOfNodes += testNet.layers[i]
 
 nodesInput = numpy.zeros((numberOfNodes, 1),dtype=numpy.float32)
-nodesInput_gpu = cuda.mem_alloc(nodesInput.nbytes)
-cuda.memcpy_htod(nodesInput_gpu,nodesInput)
+testNet.nodesInput = nodesInput
 
 numberOfWeights = 0
 for i in range(len(testNet.layers)-1):
@@ -453,6 +470,7 @@ for i in range(len(testNet.layers)-1):
 
 weights = numpy.zeros((numberOfWeights, 1),dtype=numpy.float32)
 grads = numpy.zeros((numberOfWeights, 1),dtype=numpy.float32)
+loss = numpy.zeros((numberOfWeights, 1),dtype=numpy.float32)
 
 weightsFile = "sigmoid-untrained-weights"
 #weightsFile = "sigmoid-weights"
@@ -475,26 +493,23 @@ else:
 
 testNet.weights = weights
 testNet.grads = grads
+testNet.loss = loss
 
 nodes = numpy.zeros((numberOfNodes, 1),dtype=numpy.float32)
 testNet.nodes = nodes
 
-loss_gpu = cuda.mem_alloc(grads.nbytes)
-cuda.memcpy_htod(loss_gpu,grads)
+outputLoss = numpy.zeros((testNet.layers[2]),dtype=numpy.float32)
+testNet.outputLoss = outputLoss
+
+totalErrors = numpy.zeros((testNet.layers[1]),dtype=numpy.float32)
+testNet.totalErrors = totalErrors
 
 testNet.copyToDevice()
 
 # --- training ---
-
-outputLoss = numpy.zeros((testNet.layers[2]),dtype=numpy.float32)
-outputLoss_gpu = cuda.mem_alloc(outputLoss.nbytes)
 outputLossInput = numpy.zeros_like(outputLoss) #outputLoss * input
 outputLossInput_gpu = cuda.mem_alloc(outputLossInput.nbytes)
 cuda.memcpy_htod(outputLossInput_gpu,outputLossInput)
-
-totalErrors = numpy.zeros((testNet.layers[1]),dtype=numpy.float32)
-totalErrors_gpu = cuda.mem_alloc(totalErrors.nbytes)
-cuda.memcpy_htod(totalErrors_gpu,totalErrors)
 
 training_correct = numpy.zeros((1),dtype=numpy.int32)
 training_correct_gpu = cuda.mem_alloc(training_correct.nbytes)
@@ -508,7 +523,6 @@ trainImg = img_train[0]
 trainImg32 = trainImg.astype(numpy.float32)
 img_gpu = cuda.mem_alloc(trainImg32.nbytes)
 
-totalErrors = numpy.zeros((testNet.layers[1]),dtype=numpy.float32)
 
 learningRate = numpy.float32(0.1)
 batchSize = 1
