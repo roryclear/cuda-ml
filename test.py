@@ -18,14 +18,12 @@ class Net():
         self.grads = None
         self.nodesInput = None
         self.loss = None
-        self.totalErrors = None
 
         self.weights_gpu = None
         self.nodes_gpu = None
         self.grad_gpu = None
         self.nodesInput_gpu = None
         self.loss_gpu = None
-        self.totalErrors_gpu = None
 
     def copyToDevice(self):
       self.weights_gpu = cuda.mem_alloc(self.weights.nbytes)
@@ -33,14 +31,12 @@ class Net():
       self.grads_gpu = cuda.mem_alloc(self.grads.nbytes)
       self.nodesInput_gpu = cuda.mem_alloc(self.nodesInput.nbytes)
       self.loss_gpu = cuda.mem_alloc(self.loss.nbytes)
-      self.totalErrors_gpu = cuda.mem_alloc(self.totalErrors.nbytes)
 
       cuda.memcpy_htod(self.nodes_gpu,self.nodes)
       cuda.memcpy_htod(self.weights_gpu,self.weights)
       cuda.memcpy_htod(self.grads_gpu,self.grads)
       cuda.memcpy_htod(self.nodesInput_gpu,self.nodesInput)
       cuda.memcpy_htod(self.loss_gpu,self.loss)
-      cuda.memcpy_htod(self.totalErrors_gpu,self.totalErrors)
 
 
     def optimize(self):
@@ -126,12 +122,12 @@ class Net():
       if bx > 1024:
         gx = int(bx / 1024) + 1
         bx = 1024
-      get_node_loss(self.totalErrors_gpu,self.loss_gpu,numpy.int32(self.layers[2]),startA,
+      get_node_loss(self.loss_gpu,self.loss_gpu,numpy.int32(self.layers[2]),startA,
                     numpy.int32(length),block=(bx,1,1),grid=(gx,1))
 
       startB = numpy.int32(self.layers[0])
       startC = numpy.int32(0)
-      get_grads(self.grads_gpu,self.totalErrors_gpu,self.nodesInput_gpu, self.nodes_gpu,startB,startC,
+      get_grads(self.grads_gpu,self.loss_gpu,self.nodesInput_gpu, self.nodes_gpu,startB,startC,
                 block=(self.layers[0],1,1),grid=(self.layers[1],1))
 
     def forward(self):
@@ -493,9 +489,6 @@ testNet.loss = loss
 
 nodes = numpy.zeros((numberOfNodes, 1),dtype=numpy.float32)
 testNet.nodes = nodes
-
-totalErrors = numpy.zeros((testNet.layers[1]),dtype=numpy.float32)
-testNet.totalErrors = totalErrors
 
 testNet.copyToDevice()
 
