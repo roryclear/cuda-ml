@@ -74,8 +74,6 @@ class Net():
       get_output_loss(self.loss_gpu, self.nodes_gpu, start, numpy.int32(label_train[i]),
                       block=(self.layers[2],1,1))
       
-      startB = numpy.int32(self.layers[0] + self.layers[1])
-
       n = 1
       n_NP = numpy.int32(n)
 
