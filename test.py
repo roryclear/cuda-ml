@@ -75,8 +75,6 @@ class Net():
                       block=(self.layers[2],1,1))
       
       startB = numpy.int32(self.layers[0] + self.layers[1])
-      array_mulitply_minus(outputLossInput_gpu,self.loss_gpu,self.nodesInput_gpu, 
-                           startB,block=(self.layers[2],1,1))
 
       n = 1
       n_NP = numpy.int32(n)
@@ -96,9 +94,9 @@ class Net():
       #int ncA, int ncB, int nrA
       startn0 = numpy.int32(self.layers[0])
       startD = numpy.int32(self.layers[0] * self.layers[1])
-      startW = numpy.int32(0)
+      startW = numpy.int32(self.layers[0] + self.layers[1])
       #multiply_them_index2(float *nodesD, float *weights, float *nodesA, int ncA, int ncB, int nrA, int startn0, int startD, int startW)
-      multiply_them_index_add(self.grads_gpu, outputLossInput_gpu,
+      multiply_them_index_add(self.grads_gpu, self.loss_gpu, self.nodesInput_gpu,
        self.nodes_gpu, n_NP, numpy.int32(bx), numpy.int32(10), startn0, startD, startW,
         block=(bxn,by,1), grid=(gx,gy)) 
       
@@ -219,7 +217,7 @@ mod = comp.SourceModule(
 }
 
 
-__global__ void multiply_them_index_add(float *nodesD, float *weights, float *nodesA, int ncA, int ncB, int nrA, int startn0, int startD, int startW)
+__global__ void multiply_them_index_add(float *nodesD, float *weights, float *input ,float *nodesA, int ncA, int ncB, int nrA, int startn0, int startD, int startW)
 {
   int row = threadIdx.y + blockDim.y * blockIdx.y;
   int col = threadIdx.x + blockDim.x * blockIdx.x;
@@ -227,7 +225,7 @@ __global__ void multiply_them_index_add(float *nodesD, float *weights, float *no
   if(col < ncB && row < nrA)
   {
   for(int i = 0; i < ncA; i++){
-    t += weights[startW + (row * ncA) + i] * nodesA[startn0 + col + (i * ncB)];
+    t += -weights[startW + (row * ncA) + i] * input[startW + (row * ncA) + i] * nodesA[startn0 + col + (i * ncB)];
   }
     nodesD[startD + (row * ncB) + col] += t;
   }
@@ -493,10 +491,6 @@ testNet.nodes = nodes
 testNet.copyToDevice()
 
 # --- training ---
-outputLossInput = numpy.zeros((testNet.layers[2]),dtype=numpy.float32) #outputLoss * input
-outputLossInput_gpu = cuda.mem_alloc(outputLossInput.nbytes)
-cuda.memcpy_htod(outputLossInput_gpu,outputLossInput)
-
 training_correct = numpy.zeros((1),dtype=numpy.int32)
 training_correct_gpu = cuda.mem_alloc(training_correct.nbytes)
 cuda.memcpy_htod(training_correct_gpu,training_correct)
