@@ -38,6 +38,25 @@ class Net():
       cuda.memcpy_htod(self.nodesInput_gpu,self.nodesInput)
       cuda.memcpy_htod(self.loss_gpu,self.loss)
 
+    def loadWeights(self, path):
+      weightsFile = path
+      for i in range(len(self.layers) - 1):
+        weightsFile += str(self.layers[i]) + "-"
+      weightsFile += str(self.layers[len(self.layers)-1]) + "-1d.txt"
+      if exists(weightsFile):
+        f = open(weightsFile, "r")
+        lines = f.readlines()
+        for i in range(len(lines)):
+          line = lines[i].replace("\n","")
+          weights[i] = line
+
+      else:
+        print("no weights file was found")    
+        for x in range(len(weights)):
+          weights[x] = numpy.random.uniform() * (2 / numpy.sqrt(testNet.layers[0])) - 1 / numpy.sqrt(testNet.layers[0])
+
+      testNet.weights = weights
+
 
     def optimize(self):
       length = len(weights)
@@ -462,26 +481,9 @@ testNet.nodesInput = numpy.zeros((numberOfNodes, 1),dtype=numpy.float32)
 
 weights = numpy.zeros((numberOfWeights, 1),dtype=numpy.float32)
 
-weightsFile = "sigmoid-untrained-weights"
 #weightsFile = "sigmoid-weights"
-
-for i in range(len(testNet.layers) - 1):
-  weightsFile += str(testNet.layers[i]) + "-"
-weightsFile += str(testNet.layers[len(testNet.layers)-1]) + "-1d.txt"
-
-if exists(weightsFile):
-  f = open(weightsFile, "r")
-  lines = f.readlines()
-  for i in range(len(lines)):
-    line = lines[i].replace("\n","")
-    weights[i] = line
-
-else:
-  print("no weights file was found")    
-  for x in range(len(weights)):
-    weights[x] = numpy.random.uniform() * (2 / numpy.sqrt(testNet.layers[0])) - 1 / numpy.sqrt(testNet.layers[0])
-
-testNet.weights = weights
+weightsFile = "sigmoid-untrained-weights"
+testNet.loadWeights(weightsFile)
 
 testNet.copyToDevice()
 
