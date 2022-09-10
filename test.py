@@ -112,7 +112,6 @@ class Net():
       startn0 = numpy.int32(self.layers[0])
       startD = numpy.int32(self.layers[0] * self.layers[1])
       startW = numpy.int32(self.layers[0] + self.layers[1])
-      #multiply_them_index2(float *nodesD, float *weights, float *nodesA, int ncA, int ncB, int nrA, int startn0, int startD, int startW)
       multiply_them_index_add(self.grads_gpu, self.loss_gpu, self.nodesInput_gpu,
        self.nodes_gpu, n_NP, numpy.int32(bx), numpy.int32(10), startn0, startD, startW,
         block=(bxn,by,1), grid=(gx,gy)) 
@@ -461,6 +460,17 @@ copy = mod.get_function("copy")
 img_train = img_train / 255
 img_test = img_test / 255
 
+training_correct = numpy.zeros((1),dtype=numpy.int32)
+training_correct_gpu = cuda.mem_alloc(training_correct.nbytes)
+cuda.memcpy_htod(training_correct_gpu,training_correct)
+
+test_correct = numpy.zeros((1),dtype=numpy.int32)
+test_correct_gpu = cuda.mem_alloc(test_correct.nbytes)
+cuda.memcpy_htod(test_correct_gpu,test_correct)
+
+trainImg32 = img_train[0].astype(numpy.float32)
+img_gpu = cuda.mem_alloc(trainImg32.nbytes)
+
 testNet = Net()
 testNet.layers = [784,16,10]
 
@@ -478,33 +488,20 @@ testNet.nodes = numpy.zeros((numberOfNodes, 1),dtype=numpy.float32)
 testNet.grads = numpy.zeros((numberOfWeights, 1),dtype=numpy.float32)
 testNet.loss = numpy.zeros((numberOfWeights, 1),dtype=numpy.float32)
 testNet.nodesInput = numpy.zeros((numberOfNodes, 1),dtype=numpy.float32)
-
 weights = numpy.zeros((numberOfWeights, 1),dtype=numpy.float32)
 
 #weightsFile = "sigmoid-weights"
 weightsFile = "sigmoid-untrained-weights"
 testNet.loadWeights(weightsFile)
 
+
 testNet.copyToDevice()
 
 # --- training ---
-training_correct = numpy.zeros((1),dtype=numpy.int32)
-training_correct_gpu = cuda.mem_alloc(training_correct.nbytes)
-cuda.memcpy_htod(training_correct_gpu,training_correct)
-
-test_correct = numpy.zeros((1),dtype=numpy.int32)
-test_correct_gpu = cuda.mem_alloc(test_correct.nbytes)
-cuda.memcpy_htod(test_correct_gpu,test_correct)
-
-trainImg32 = img_train[0].astype(numpy.float32)
-img_gpu = cuda.mem_alloc(trainImg32.nbytes)
-
 
 learningRate = numpy.float32(0.1)
 batchSize = 1
 for epoch in range(1):
-
-  correct = 0
   start_time = time.time()
   for i in range(len(img_train)): 
     trainImg32 = img_train[i].astype(numpy.float32)
@@ -526,7 +523,6 @@ for epoch in range(1):
 
 # --- testing ---
 
-correct = 0
 start_time = time.time()
 for i in range(len(img_test)):
   testImg32 = img_test[i].astype(numpy.float32)  
@@ -535,8 +531,6 @@ for i in range(len(img_test)):
   testNet.forward()
   start = numpy.int32(testNet.layers[0] + testNet.layers[1])
   check_answer(test_correct_gpu, testNet.nodes_gpu, start, numpy.int32(label_test[i]),block=(1,1,1))
-  #guess = output.index(max(output))
-  #print("guess = ",guess)
 print("--- %s seconds ---" % (time.time() - start_time))
 cuda.memcpy_dtoh(test_correct,test_correct_gpu)
 print("test dataset: correct = ",(test_correct[0]/len(img_test)))
