@@ -90,8 +90,13 @@ class Net():
 
       #backward
       start = numpy.int32(self.layers[0] + self.layers[1])
+      bx = self.layers[2]
+      gx = 1
+      if bx > 1024:
+        gx = int(bx / 1024) + 1
+        bx = 1024
       get_output_loss(self.loss_gpu, self.nodes_gpu, start, numpy.int32(label_train[i]),
-                      block=(self.layers[2],1,1))
+                      block=(bx,1,1),grid=(gx,1))
       
       n = 1
       n_NP = numpy.int32(n)
@@ -112,8 +117,10 @@ class Net():
       startn0 = numpy.int32(self.layers[0])
       startD = numpy.int32(self.layers[0] * self.layers[1])
       startW = numpy.int32(self.layers[0] + self.layers[1])
+      ncB = numpy.int32(self.layers[1])
+      nrA = numpy.int32(self.layers[2])
       multiply_them_index_add(self.grads_gpu, self.loss_gpu, self.nodesInput_gpu,
-       self.nodes_gpu, n_NP, numpy.int32(bx), numpy.int32(10), startn0, startD, startW,
+       self.nodes_gpu, n_NP, ncB, nrA, startn0, startD, startW,
         block=(bxn,by,1), grid=(gx,gy)) 
       
       #backward first weights ???
@@ -136,7 +143,8 @@ class Net():
       if bx > 1024:
         gx = int(bx / 1024) + 1
         bx = 1024
-      get_node_loss(self.loss_gpu,self.loss_gpu,numpy.int32(self.layers[2]),startA,
+      numberOfNodes = numpy.int32(self.layers[2])
+      get_node_loss(self.loss_gpu,self.loss_gpu,numberOfNodes,startA,
                     numpy.int32(length),block=(bx,1,1),grid=(gx,1))
 
       startB = numpy.int32(self.layers[0])
