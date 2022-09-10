@@ -153,67 +153,47 @@ class Net():
       if bx > 1024:
         gx = int(bx / 1024) + 1
         bx = 1024
-      
+  
       copy(self.nodes_gpu, img_gpu, numpy.int32(0), numpy.int32(0), numpy.int32(length), block=(bx,1,1), grid=(gx,1))
 
-      
-      n = self.layers[0] # number of columns in A / number of rows in B
-      n_NP = numpy.int32(n)
-      bx = 1 # number of cols in B
-      by = self.layers[1] # number of rows in A
-      gx = 1
-      gy = 1
-      if by > 1024:
-        gy = int(by / 1024) + 1
-        by = 1024
       startn0 = numpy.int32(0)
       startn1 = numpy.int32(self.layers[0])
       startw = numpy.int32(0)
-      multiply_them_index(self.nodes_gpu, self.weights_gpu, self.nodes_gpu, n_NP, numpy.int32(bx) 
-      ,numpy.int32(self.layers[1]) , startn0, startn1,
-                            startw, block=(bx,by,1), grid=(gx,gy))
+      start = numpy.int32(0)
+      for x in range(len(self.layers)-1):
+        
+        if x > 0:
+          startw += numpy.int32(self.layers[x-1] * self.layers[x])
+          startn1 += numpy.int32(self.layers[x])
+          startn0 += numpy.int32(self.layers[x-1])
 
-      
-      bx = self.layers[1]
-      gx = 1
-      if bx > 1024:
-        gx = int(bx / 1024) + 1
-        bx = 1024
 
-      sigmoid_index(self.nodes_gpu,numpy.int32(self.layers[0]),numpy.int32(self.layers[1]),
-                    block=(bx,1,1), grid=(gx,1))
+        n = self.layers[x] # number of columns in A / number of rows in B
+        n_NP = numpy.int32(n)
+        bx = 1 # number of cols in B
+        by = self.layers[x+1] # number of rows in A
+        gx = 1
+        gy = 1
+        nrA = numpy.int32(self.layers[x+1])
+        if by > 1024:
+          gy = int(by / 1024) + 1
+          by = 1024
+        #multiply_them_index(float *nodesD, float *weights, float *nodesA, int ncA, int ncB, int nrA, int startn0, int startD, int startW)
+        multiply_them_index(self.nodes_gpu, self.weights_gpu, self.nodes_gpu, n_NP, numpy.int32(bx) 
+        ,nrA , startn0, startn1,
+                              startw, block=(bx,by,1), grid=(gx,gy))
 
-      n = self.layers[1]
-      n_NP = numpy.int32(n)
+        length = self.layers[x+1]
+        start += numpy.int32(self.layers[x])
+        bx = length
+        gx = 1
+        if bx > 1024:
+          gx = int(bx / 1024) + 1
+          bx = 1024
+        sigmoid_index(self.nodes_gpu,start,numpy.int32(length),
+                      block=(bx,1,1), grid=(gx,1))
 
-      bx = 1 # number of cols in B
-      by = self.layers[2] # number of rows in A
-      gx = 1
-      gy = 1
 
-      startn0 = numpy.int32(self.layers[0])
-      startn1 = numpy.int32(self.layers[0] + self.layers[1])
-      startW = numpy.int32(self.layers[0] * self.layers[1])
-      multiply_them_index(self.nodes_gpu, self.weights_gpu, self.nodes_gpu, n_NP, numpy.int32(bx),
-                          numpy.int32(self.layers[2]), startn0, startn1, startW, block=(bx,by,1), grid=(gx,gy))
-
-      startA = numpy.int32(self.layers[0] + self.layers[1])
-      startD = numpy.int32(0)
-      length = self.layers[2]
-      bx = length
-      gx = 1
-      if bx > 1024:
-        gx = int(bx / 1024) + 1
-        bx = 1024
-
-      start = numpy.int32(self.layers[0] + self.layers[1])
-      length = numpy.int32(self.layers[2])
-      bx = int(length)
-      gx = 1
-      if bx > 1024:
-        gx = int(bx / 1024) + 1
-        bx = 1024
-      sigmoid_index(self.nodes_gpu, start, length, block=(bx,1,1), grid=(gx,1))
       return 0
 
 mod = comp.SourceModule(
@@ -485,7 +465,7 @@ trainImg32 = img_train[0].astype(numpy.float32)
 img_gpu = cuda.mem_alloc(trainImg32.nbytes)
 
 testNet = Net()
-testNet.layers = [784,4,10]
+testNet.layers = [784,16,10]
 
 numberOfNodes = 0
 for i in range(len(testNet.layers)):
