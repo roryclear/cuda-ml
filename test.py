@@ -58,7 +58,7 @@ class Net():
       reset_values(self.grads_gpu,numpy.int32(length),block=(bx,1,1),grid=(gx,1))
   
     def backward(self):
-      length = len(nodesInput)
+      length = len(self.nodesInput)
       bx = length
       gx = 1
       if bx > 1024:
@@ -449,16 +449,18 @@ numberOfNodes = 0
 for i in range(len(testNet.layers)):
   numberOfNodes += testNet.layers[i]
 
-nodesInput = numpy.zeros((numberOfNodes, 1),dtype=numpy.float32)
-testNet.nodesInput = nodesInput
+testNet.nodesInput = numpy.zeros((numberOfNodes, 1),dtype=numpy.float32)
 
 numberOfWeights = 0
 for i in range(len(testNet.layers)-1):
   numberOfWeights += testNet.layers[i] * testNet.layers[i+1]
 
+testNet.nodes = numpy.zeros((numberOfNodes, 1),dtype=numpy.float32)
+testNet.grads = numpy.zeros((numberOfWeights, 1),dtype=numpy.float32)
+testNet.loss = numpy.zeros((numberOfWeights, 1),dtype=numpy.float32)
+testNet.nodesInput = numpy.zeros((numberOfNodes, 1),dtype=numpy.float32)
+
 weights = numpy.zeros((numberOfWeights, 1),dtype=numpy.float32)
-grads = numpy.zeros((numberOfWeights, 1),dtype=numpy.float32)
-loss = numpy.zeros((numberOfWeights, 1),dtype=numpy.float32)
 
 weightsFile = "sigmoid-untrained-weights"
 #weightsFile = "sigmoid-weights"
@@ -480,11 +482,6 @@ else:
     weights[x] = numpy.random.uniform() * (2 / numpy.sqrt(testNet.layers[0])) - 1 / numpy.sqrt(testNet.layers[0])
 
 testNet.weights = weights
-testNet.grads = grads
-testNet.loss = loss
-
-nodes = numpy.zeros((numberOfNodes, 1),dtype=numpy.float32)
-testNet.nodes = nodes
 
 testNet.copyToDevice()
 
@@ -497,8 +494,7 @@ test_correct = numpy.zeros((1),dtype=numpy.int32)
 test_correct_gpu = cuda.mem_alloc(test_correct.nbytes)
 cuda.memcpy_htod(test_correct_gpu,test_correct)
 
-trainImg = img_train[0]
-trainImg32 = trainImg.astype(numpy.float32)
+trainImg32 = img_train[0].astype(numpy.float32)
 img_gpu = cuda.mem_alloc(trainImg32.nbytes)
 
 
@@ -509,27 +505,15 @@ for epoch in range(1):
   correct = 0
   start_time = time.time()
   for i in range(len(img_train)): 
-    trainImg = img_train[i]
-    trainImg32 = trainImg.astype(numpy.float32)
+    trainImg32 = img_train[i].astype(numpy.float32)
     cuda.memcpy_htod(img_gpu,trainImg32)
-
-    #last weights
 
     testNet.forward()
 
     testNet.backward()
     
-
-
     if i % batchSize == 0 or i == (len(img_train) - 1):
-      testNet.optimize()
-      length = testNet.layers[1] * testNet.layers[2] + testNet.layers[0] * testNet.layers[1]
-      bx = length
-      gx = 1
-      if bx > 1024:
-        gx = int(bx / 1024) + 1
-        bx = 1024
-      
+      testNet.optimize()      
       testNet.zero_grad()
       
 
@@ -543,9 +527,7 @@ for epoch in range(1):
 correct = 0
 start_time = time.time()
 for i in range(len(img_test)):
-  testImg = img_test[i]
-  testImg32 = testImg.astype(numpy.float32)
-  
+  testImg32 = img_test[i].astype(numpy.float32)  
   cuda.memcpy_htod(img_gpu, testImg32)
 
   testNet.forward()
