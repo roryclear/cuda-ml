@@ -149,8 +149,33 @@ class Net():
 
       startB = numpy.int32(self.layers[0])
       startC = numpy.int32(0)
+
+      bx = self.layers[0]
+      by = self.layers[1]
+      gx = 1
+      gy = 1
+
+      if bx > 1024:
+        gx = int(bx / 1024) + 1
+        bx = 1024
+
+      if by > 1024:
+        gy = int(by / 1024) + 1
+        by = 1024
+
+      if bx * by > 1024:
+        if bx > by:
+          byn = int(1024 / bx)
+          gy = gy * int(by / byn)
+          by = byn
+        else:
+          bxn = int(1024 / by)
+          gx = gx * int(bx / bxn)
+          bx = bxn
+
+
       get_grads(self.grads_gpu,self.loss_gpu,self.nodesInput_gpu, self.nodes_gpu,startB,startC,
-                block=(self.layers[0],1,1),grid=(self.layers[1],1))
+                block=(bx,by,1),grid=(gx,gy))
 
     def forward(self):
 
@@ -317,9 +342,10 @@ __global__ void get_node_loss(float *d, float *a, int n, int startA, int length)
   }
 }
 
+
 __global__ void get_grads(float *d, float *a, float *b, float *c, int startB, int startC)
 {
-  d[threadIdx.x + blockDim.x * blockIdx.x] += a[blockIdx.x] * b[startB + blockIdx.x] * c[startC + threadIdx.x]; 
+  d[threadIdx.x + blockDim.x * blockIdx.y] += a[blockIdx.y] * b[startB + blockIdx.y] * c[startC + threadIdx.x]; 
 }
 
 __global__ void reset_values(float *d, int length)
