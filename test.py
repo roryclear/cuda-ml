@@ -452,6 +452,19 @@ check_answer = mod.get_function("check_answer")
 add_them = mod.get_function("add_them")
 copy = mod.get_function("copy")
 
+def test():
+  reset_values(test_correct_gpu,numpy.int32(1),block=(1,1,1))
+  start_time = time.time()
+  for i in range(len(img_test)):
+    testImg32 = img_test[i].astype(numpy.float32)  
+    cuda.memcpy_htod(img_gpu, testImg32)
+
+    testNet.forward()
+    start = numpy.int32(testNet.layers[0] + testNet.layers[1])
+    check_answer(test_correct_gpu, testNet.nodes_gpu, start, numpy.int32(label_test[i]),block=(1,1,1))
+  print("--- %s seconds ---" % (time.time() - start_time))
+  cuda.memcpy_dtoh(test_correct,test_correct_gpu)
+  print("test dataset: correct = ",(test_correct[0]/len(img_test)))
 
 #---- mnist stuff ---- se
 
@@ -472,7 +485,7 @@ trainImg32 = img_train[0].astype(numpy.float32)
 img_gpu = cuda.mem_alloc(trainImg32.nbytes)
 
 testNet = Net()
-testNet.layers = [784,16,10]
+testNet.layers = [784,4,10]
 
 numberOfNodes = 0
 for i in range(len(testNet.layers)):
@@ -502,6 +515,7 @@ testNet.copyToDevice()
 learningRate = numpy.float32(0.1)
 batchSize = 1
 for epoch in range(1):
+  print("\nEPOCH",epoch,"\n")
   start_time = time.time()
   for i in range(len(img_train)): 
     trainImg32 = img_train[i].astype(numpy.float32)
@@ -513,26 +527,10 @@ for epoch in range(1):
     
     if i % batchSize == 0 or i == (len(img_train) - 1):
       testNet.optimize()      
-      testNet.zero_grad()
-      
+      testNet.zero_grad()  
 
   print("--- %s seconds ---" % (time.time() - start_time))
   cuda.memcpy_dtoh(training_correct,training_correct_gpu)
   reset_values(training_correct_gpu,numpy.int32(1),block=(1,1,1))
-  print("correct (GPU) = ",(training_correct[0]/len(img_train)))
-
-# --- testing ---
-
-start_time = time.time()
-for i in range(len(img_test)):
-  testImg32 = img_test[i].astype(numpy.float32)  
-  cuda.memcpy_htod(img_gpu, testImg32)
-
-  testNet.forward()
-  start = numpy.int32(testNet.layers[0] + testNet.layers[1])
-  check_answer(test_correct_gpu, testNet.nodes_gpu, start, numpy.int32(label_test[i]),block=(1,1,1))
-print("--- %s seconds ---" % (time.time() - start_time))
-cuda.memcpy_dtoh(test_correct,test_correct_gpu)
-print("test dataset: correct = ",(test_correct[0]/len(img_test)))
-
-# --------
+  print("train dataset: correct = ",(training_correct[0]/len(img_train)))
+  test()
