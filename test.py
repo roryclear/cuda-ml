@@ -382,18 +382,20 @@ copy = mod.get_function("copy")
 def test():
   reset_values(test_correct_gpu,numpy.int32(1),block=(1,1,1))
   start_time = time.time()
+  start = numpy.int32(0)
+  for x in range(len(testNet.layers)-1):
+    start += numpy.int32(testNet.layers[x])
   for i in range(len(img_test)):
     testImg32 = img_test[i].astype(numpy.float32)  
     cuda.memcpy_htod(img_gpu, testImg32)
 
     testNet.forward()
-    start = numpy.int32(testNet.layers[0] + testNet.layers[1])
     check_answer(test_correct_gpu, testNet.nodes_gpu, start, numpy.int32(label_test[i]),block=(1,1,1))
   print("--- %s seconds ---" % (time.time() - start_time))
   cuda.memcpy_dtoh(test_correct,test_correct_gpu)
   print("test dataset: correct = ",(test_correct[0]/len(img_test)))
 
-#---- mnist stuff ---- se
+#---- mnist stuff ---- 
 
 (img_train, label_train), (img_test, label_test) = keras.datasets.mnist.load_data()
 
@@ -412,7 +414,7 @@ trainImg32 = img_train[0].astype(numpy.float32)
 img_gpu = cuda.mem_alloc(trainImg32.nbytes)
 
 testNet = Net()
-testNet.layers = [784,16,10]
+testNet.layers = [784,16,10] #backward function limited to 2 layers atm
 
 numberOfNodes = 0
 for i in range(len(testNet.layers)):
