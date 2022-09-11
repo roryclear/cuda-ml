@@ -99,9 +99,10 @@ class Net():
       get_output_loss(self.loss_gpu, self.nodes_gpu, start, numpy.int32(label_train[i]),
                       block=(bx,1,1),grid=(gx,1))
       
-
-      bx = self.layers[1]
-      by = self.layers[2]
+      lengthx = self.layers[1]
+      lengthy = self.layers[2]
+      bx = lengthx
+      by = lengthy
       gx = 1
       gy = 1
 
@@ -128,7 +129,7 @@ class Net():
       startB = startA
       ncB = numpy.int32(self.layers[1])
       nrA = numpy.int32(self.layers[2])
-      #__global__ void multiply_them_index_add(float *d, float *a, float *b ,float *c, int startA, int startB, int startC, int startD, int ncB, int nrA)
+      #__global__ void multiply_them_index_minus(float *d, float *a, float *b ,float *c, int startA, int startB, int startC, int startD, int ncB, int nrA)
       multiply_them_index_add(self.grads_gpu, self.loss_gpu, self.nodesInput_gpu,
        self.nodes_gpu, startA, startB, startC, startD, ncB, nrA,
         block=(bx,by,1), grid=(gx,gy)) 
@@ -183,7 +184,7 @@ class Net():
           by = int(1024 / bx)
           gy = math.ceil(lengthy / by) 
 
-      get_grads(self.grads_gpu,self.loss_gpu,self.nodesInput_gpu, self.nodes_gpu,startA,startB,startC,startD,numpy.int32(lengthx),numpy.int32(lengthy),
+      multiply_them_index_add(self.grads_gpu,self.loss_gpu,self.nodesInput_gpu, self.nodes_gpu,startA,startB,startC,startD,numpy.int32(lengthx),numpy.int32(lengthy),
                 block=(bx,by,1),grid=(gx,gy))
 
     def forward(self):
@@ -261,17 +262,8 @@ __global__ void multiply_them_index_add(float *d, float *a, float *b ,float *c, 
   int col = threadIdx.x + blockDim.x * blockIdx.x;
   if(col < ncB && row < nrA)
   {
-    d[startD + (row * ncB) + col] -= a[startA + row] * b[startB + row] * c[startC + col];
+    d[startD + (row * ncB) + col] += a[startA + row] * b[startB + row] * c[startC + col];
   }
-}
-
-__global__ void get_grads(float *d, float *a, float *b, float *c, int startA ,int startB, int startC, int startD,int lengthx, int lengthy)
-{
-  if((threadIdx.x + blockDim.x * blockIdx.x) < lengthx && (threadIdx.y + blockDim.y * blockIdx.y) < lengthy)
-  {
-  d[startD + (threadIdx.x + blockDim.x * blockIdx.x) + lengthx * (threadIdx.y + blockDim.y * blockIdx.y)]
-   += a[startA + (threadIdx.y + blockDim.y * blockIdx.y)] * b[startB + (threadIdx.y + blockDim.y * blockIdx.y)] * c[startC + (threadIdx.x + blockDim.x * blockIdx.x)]; 
-   }
 }
 
 __global__ void multiply_them(float *d, float *a, float *b, int ncA, int ncB, int nrA)
@@ -329,9 +321,9 @@ __global__ void get_output_loss(float *d, float *o, int start, int a)
 {
   int i = threadIdx.x;
   if(i == a) {
-    d[start + i] = 1 - o[start + i];
+    d[start + i] = o[start + i] - 1;
   } else {
-    d[start + i] = 0 - o[start + i];
+    d[start + i] = o[start + i];
   }
 }
 
@@ -463,7 +455,6 @@ array_mulitply_minus = mod.get_function("array_mulitply_minus")
 array_mulitply = mod.get_function("array_mulitply")
 get_output_loss = mod.get_function("get_output_loss")
 get_node_loss = mod.get_function("get_node_loss")
-get_grads = mod.get_function("get_grads")
 reset_values = mod.get_function("reset_values")
 reset_values_index = mod.get_function("reset_values_index")
 check_answer = mod.get_function("check_answer")
