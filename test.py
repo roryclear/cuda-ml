@@ -113,13 +113,15 @@ class Net():
           gx = int(bx / bxn) + 1
           
       #int ncA, int ncB, int nrA
-      startn0 = numpy.int32(self.layers[0])
+      startC = numpy.int32(self.layers[0])
       startD = numpy.int32(self.layers[0] * self.layers[1])
-      startW = numpy.int32(self.layers[0] + self.layers[1])
+      startA = numpy.int32(self.layers[0] + self.layers[1])
+      startB = startA
       ncB = numpy.int32(self.layers[1])
       nrA = numpy.int32(self.layers[2])
+      #__global__ void multiply_them_index_add(float *d, float *a, float *b ,float *c, int startA, int startB, int startC, int startD, int ncB, int nrA)
       multiply_them_index_add(self.grads_gpu, self.loss_gpu, self.nodesInput_gpu,
-       self.nodes_gpu, startW, startW, startn0, startD, ncB, nrA,
+       self.nodes_gpu, startA, startB, startC, startD, ncB, nrA,
         block=(bxn,by,1), grid=(gx,gy)) 
       
       #backward first weights ???
