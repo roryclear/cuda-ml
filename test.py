@@ -266,32 +266,6 @@ __global__ void multiply_them_index_add(float *d, float *a, float *b ,float *c, 
   }
 }
 
-__global__ void multiply_them(float *d, float *a, float *b, int ncA, int ncB, int nrA)
-{
-  int row = threadIdx.y + blockDim.y * blockIdx.y;
-  int col = threadIdx.x + blockDim.x * blockIdx.x;
-
-  if(col < ncB && row < nrA)
-  {
-    d[(row * ncB) + col] = a[row * ncA] * b[col];
-  }
-}
-
-__global__ void multiply_them_add(float *d, float *a, float *b, int ncA, int ncB, int nrA)
-{
-  int row = threadIdx.y + blockDim.y * blockIdx.y;
-  int col = threadIdx.x + blockDim.x * blockIdx.x;
-
-  float t = 0;
-  if(col < ncB && row < nrA)
-  {
-  for(int i = 0; i < ncA; i++){
-    t += a[(row * ncA) + i] * b[col + (i * ncB)];
-  }
-  }
-  d[(row * ncB) + col] += t;
-}
-
 __global__ void optimize(float *d, float *a, float lr, int length)
 {
   int i = threadIdx.x + blockIdx.x * blockDim.x;
@@ -301,11 +275,6 @@ __global__ void optimize(float *d, float *a, float lr, int length)
   }
 }
 
-__global__ void array_mulitply_minus(float *d, float *a, float *b, int startb)
-{
-  const int i = threadIdx.x + blockDim.x * blockIdx.x;
-  d[i] = -a[startb + i] * b[startb + i];
-}
 
 __global__ void array_mulitply(float *d, float *a, float *b, int startD, int startA, int startB, int length)
 {
@@ -353,15 +322,6 @@ __global__ void reset_values(float *d, int length)
   }
 }
 
-__global__ void reset_values_index(float *d, int start, int length)
-{
-  int i = threadIdx.x + blockDim.x * blockIdx.x;
-  if(i < length)
-  {
-    d[i + start] = 0;
-  }
-}
-
 
 __global__ void check_answer(int *a, float *output, int start,int answer)
 {
@@ -373,40 +333,6 @@ __global__ void check_answer(int *a, float *output, int start,int answer)
     }
   }
   a[0] = a[0] + 1;
-}
-
-__global__ void add_them(float* d, float *a, int length)
-{
-  int i = threadIdx.x + blockDim.x * blockIdx.x;
-  if(i < length)
-  {
-    d[i] = d[i] + a[i];
-  }
-}
-
-
-__global__ void minus_them(float *d, float *a)
-{
-  const int i = threadIdx.x;
-  atomicAdd(&d[0], -a[i]);
-}
-
-__global__ void relu(float *a)
-{
-  const int i = threadIdx.x;
-  if(a[i] < 0) 
-  {
-    a[i] = 0;
-  }
-}
-
-__global__ void sigmoid(float *d, int length)
-{
-  const int i = threadIdx.x + blockDim.x * blockIdx.x;
-  if(i < length)
-  {
-    d[i] = 1 / (1 + exp(-d[i]));
-  }
 }
 
 __global__ void sigmoid_index(float *d, int start, int length)
@@ -441,24 +367,16 @@ __global__ void copy(float *d, float *a, int startA, int startD, int length)
 MAX_THREADS_PER_BLOCK = \
     cuda.Device(0).get_attribute(pycuda._driver.device_attribute.MAX_THREADS_PER_BLOCK)
 
-multiply_them = mod.get_function("multiply_them")
 multiply_them_index = mod.get_function("multiply_them_index")
 multiply_them_index_add = mod.get_function("multiply_them_index_add") #adds to result
-multiply_them_add = mod.get_function("multiply_them_add")
 optimize = mod.get_function("optimize")
-minus_them = mod.get_function("minus_them")
-relu = mod.get_function("relu")
-sigmoid = mod.get_function("sigmoid")
 sigmoid_index = mod.get_function("sigmoid_index")
 der_sigmoid = mod.get_function("der_sigmoid")
-array_mulitply_minus = mod.get_function("array_mulitply_minus")
 array_mulitply = mod.get_function("array_mulitply")
 get_output_loss = mod.get_function("get_output_loss")
 get_node_loss = mod.get_function("get_node_loss")
 reset_values = mod.get_function("reset_values")
-reset_values_index = mod.get_function("reset_values_index")
 check_answer = mod.get_function("check_answer")
-add_them = mod.get_function("add_them")
 copy = mod.get_function("copy")
 
 def test():
