@@ -252,8 +252,17 @@ __global__ void multiply_them_index_add(float *nodesD, float *weights, float *in
   int col = threadIdx.x + blockDim.x * blockIdx.x;
   if(col < ncB && row < nrA)
   {
-    nodesD[startD + (row * ncB) + col] -= weights[startW + (row * ncA)] * input[startW + (row * ncA)] * nodesA[startn0 + col];
+    nodesD[startD + (row * ncB) + col] -= weights[startW + row] * input[startW + row] * nodesA[startn0 + col];
   }
+}
+
+__global__ void get_grads(float *d, float *a, float *b, float *c, int startA ,int startB, int startC, int startD,int lengthx, int lengthy)
+{
+  if((threadIdx.x + blockDim.x * blockIdx.x) < lengthx && (threadIdx.y + blockDim.y * blockIdx.y) < lengthy)
+  {
+  d[startD + (threadIdx.x + blockDim.x * blockIdx.x) + lengthx * (threadIdx.y + blockDim.y * blockIdx.y)]
+   += a[startA + (threadIdx.y + blockDim.y * blockIdx.y)] * b[startB + (threadIdx.y + blockDim.y * blockIdx.y)] * c[startC + (threadIdx.x + blockDim.x * blockIdx.x)]; 
+   }
 }
 
 __global__ void multiply_them(float *d, float *a, float *b, int ncA, int ncB, int nrA)
@@ -332,15 +341,6 @@ __global__ void get_node_loss(float *d, float *a, int n, int startA, int length)
   { 
   d[i] = t / n;
   }
-}
-
-__global__ void get_grads(float *d, float *a, float *b, float *c, int startA ,int startB, int startC, int startD,int lengthx, int lengthy)
-{
-  if((threadIdx.x + blockDim.x * blockIdx.x) < lengthx && (threadIdx.y + blockDim.y * blockIdx.y) < lengthy)
-  {
-  d[startD + (threadIdx.x + blockDim.x * blockIdx.x) + lengthx * (threadIdx.y + blockDim.y * blockIdx.y)]
-   += a[startA + (threadIdx.y + blockDim.y * blockIdx.y)] * b[startB + (threadIdx.y + blockDim.y * blockIdx.y)] * c[startC + (threadIdx.x + blockDim.x * blockIdx.x)]; 
-   }
 }
 
 __global__ void reset_values(float *d, int length)
