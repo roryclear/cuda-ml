@@ -3,6 +3,7 @@ import pycuda.driver as cuda
 import numpy
 import pycuda.autoinit
 import time
+import math
 from tensorflow import keras
 from os.path import exists
 
@@ -150,16 +151,28 @@ class Net():
       startB = numpy.int32(self.layers[0])
       startC = numpy.int32(0)
 
-      length = self.layers[0]
-      bx = length
-      by = self.layers[1]
+      lengthx = self.layers[0]
+      lengthy = self.layers[1]
+      bx = lengthx
+      by = lengthy
 
+      if bx > 1024:
+        gx = math.ceil(bx / 1024)
+        bx = 1024
 
+      if by > 1024:
+        gy = math.ceil(by / 1024)
+        by = 1024
 
-      gy = self.layers[1]
+      if by > bx:
+        bx = math.ceil(1024 / by)
+        gx = math.ceil(lengthx / bx)
+      else:
+        by = int(1024 / bx)
+        gy = math.ceil(lengthy / by) 
 
-      get_grads(self.grads_gpu,self.loss_gpu,self.nodesInput_gpu, self.nodes_gpu,startB,startC,numpy.int32(length),
-                block=(bx,1,1),grid=(1,gy))
+      get_grads(self.grads_gpu,self.loss_gpu,self.nodesInput_gpu, self.nodes_gpu,startB,startC,numpy.int32(lengthx),numpy.int32(lengthy),
+                block=(bx,by,1),grid=(gx,gy))
 
     def forward(self):
 
@@ -326,10 +339,13 @@ __global__ void get_node_loss(float *d, float *a, int n, int startA, int length)
   }
 }
 
-__global__ void get_grads(float *d, float *a, float *b, float *c, int startB, int startC, int length)
+__global__ void get_grads(float *d, float *a, float *b, float *c, int startB, int startC, int lengthx, int lengthy)
 {
-  d[(threadIdx.x + blockDim.x * blockIdx.x) + length * (threadIdx.y + blockDim.y * blockIdx.y)]
+  if((threadIdx.x + blockDim.x * blockIdx.x) < lengthx && (threadIdx.y + blockDim.y * blockIdx.y) < lengthy)
+  {
+  d[(threadIdx.x + blockDim.x * blockIdx.x) + lengthx * (threadIdx.y + blockDim.y * blockIdx.y)]
    += a[(threadIdx.y + blockDim.y * blockIdx.y)] * b[startB + (threadIdx.y + blockDim.y * blockIdx.y)] * c[startC + (threadIdx.x + blockDim.x * blockIdx.x)]; 
+   }
 }
 
 __global__ void reset_values(float *d, int length)
