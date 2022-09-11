@@ -43,7 +43,7 @@ class Net():
       weightsFile = path
       for i in range(len(self.layers) - 1):
         weightsFile += str(self.layers[i]) + "-"
-      weightsFile += str(self.layers[len(self.layers)-1]) + "-1d.txt"
+      weightsFile += str(self.layers[len(self.layers)-1]) + ".txt"
       if exists(weightsFile):
         f = open(weightsFile, "r")
         lines = f.readlines()
