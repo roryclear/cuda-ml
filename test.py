@@ -63,27 +63,27 @@ class Net():
       length = len(weights)
       bx = length
       gx = 1
-      if bx > 1024:
-        gx = int(bx / 1024) + 1
-        bx = 1024
+      if bx > MAX_THREADS_PER_BLOCK:
+        gx = int(bx / MAX_THREADS_PER_BLOCK) + 1
+        bx = MAX_THREADS_PER_BLOCK
       optimize(self.weights_gpu, self.grads_gpu,learningRate, numpy.int32(length), block=(bx,1,1),grid=(gx,1))
 
     def zero_grad(self):
       length = len(weights)
       bx = length
       gx = 1
-      if bx > 1024:
-        gx = int(bx / 1024) + 1
-        bx = 1024
+      if bx > MAX_THREADS_PER_BLOCK:
+        gx = int(bx / MAX_THREADS_PER_BLOCK) + 1
+        bx = MAX_THREADS_PER_BLOCK
       reset_values(self.grads_gpu,numpy.int32(length),block=(bx,1,1),grid=(gx,1))
   
     def backward(self):
       length = len(self.nodesInput)
       bx = length
       gx = 1
-      if bx > 1024:
-        gx = int(bx / 1024) + 1
-        bx = 1024
+      if bx > MAX_THREADS_PER_BLOCK:
+        gx = int(bx / MAX_THREADS_PER_BLOCK) + 1
+        bx = MAX_THREADS_PER_BLOCK
       der_sigmoid(self.nodesInput_gpu,self.nodes_gpu, numpy.int32(length),block=(bx,1,1),grid=(gx,1))
 
       start = numpy.int32(self.layers[0] + self.layers[1])
@@ -93,9 +93,9 @@ class Net():
       start = numpy.int32(self.layers[0] + self.layers[1])
       bx = self.layers[2]
       gx = 1
-      if bx > 1024:
-        gx = int(bx / 1024) + 1
-        bx = 1024
+      if bx > MAX_THREADS_PER_BLOCK:
+        gx = int(bx / MAX_THREADS_PER_BLOCK) + 1
+        bx = MAX_THREADS_PER_BLOCK
       get_output_loss(self.loss_gpu, self.nodes_gpu, start, numpy.int32(label_train[i]),
                       block=(bx,1,1),grid=(gx,1))
       
@@ -106,20 +106,20 @@ class Net():
       gx = 1
       gy = 1
 
-      if bx > 1024:
-        gx = math.ceil(bx / 1024)
-        bx = 1024
+      if bx > MAX_THREADS_PER_BLOCK:
+        gx = math.ceil(bx / MAX_THREADS_PER_BLOCK)
+        bx = MAX_THREADS_PER_BLOCK
 
-      if by > 1024:
-        gy = math.ceil(by / 1024)
-        by = 1024
+      if by > MAX_THREADS_PER_BLOCK:
+        gy = math.ceil(by / MAX_THREADS_PER_BLOCK)
+        by = MAX_THREADS_PER_BLOCK
 
-      if bx * by > 1024:
+      if bx * by > MAX_THREADS_PER_BLOCK:
         if by > bx:
-          bx = math.ceil(1024 / by)
+          bx = math.ceil(MAX_THREADS_PER_BLOCK / by)
           gx = math.ceil(lengthx / bx)
         else:
-          by = int(1024 / bx)
+          by = int(MAX_THREADS_PER_BLOCK / bx)
           gy = math.ceil(lengthy / by) 
           
       #int ncA, int ncB, int nrA
@@ -138,9 +138,9 @@ class Net():
       length = self.layers[1] * self.layers[2]
       bx = length
       gx = 1
-      if bx > 1024:
-        gx = int(bx / 1024) + 1
-        bx = 1024
+      if bx > MAX_THREADS_PER_BLOCK:
+        gx = int(bx / MAX_THREADS_PER_BLOCK) + 1
+        bx = MAX_THREADS_PER_BLOCK
       startD = numpy.int32(self.layers[0] * self.layers[1])
       startA = numpy.int32(self.layers[0] * self.layers[1])
       startB = numpy.int32(self.layers[0] * self.layers[1])
@@ -151,9 +151,9 @@ class Net():
       length = self.layers[1]  
       bx = length
       gx = 1
-      if bx > 1024:
-        gx = int(bx / 1024) + 1
-        bx = 1024
+      if bx > MAX_THREADS_PER_BLOCK:
+        gx = int(bx / MAX_THREADS_PER_BLOCK) + 1
+        bx = MAX_THREADS_PER_BLOCK
       numberOfNodes = numpy.int32(self.layers[2])
       get_node_loss(self.loss_gpu,self.loss_gpu,numberOfNodes,startA,
                     numpy.int32(length),block=(bx,1,1),grid=(gx,1))
@@ -168,20 +168,20 @@ class Net():
       bx = lengthx
       by = lengthy
 
-      if bx > 1024:
-        gx = math.ceil(bx / 1024)
-        bx = 1024
+      if bx > MAX_THREADS_PER_BLOCK:
+        gx = math.ceil(bx / MAX_THREADS_PER_BLOCK)
+        bx = MAX_THREADS_PER_BLOCK
 
-      if by > 1024:
-        gy = math.ceil(by / 1024)
-        by = 1024
+      if by > MAX_THREADS_PER_BLOCK:
+        gy = math.ceil(by / MAX_THREADS_PER_BLOCK)
+        by = MAX_THREADS_PER_BLOCK
 
-      if bx * by > 1024:
+      if bx * by > MAX_THREADS_PER_BLOCK:
         if by > bx:
-          bx = math.ceil(1024 / by)
+          bx = math.ceil(MAX_THREADS_PER_BLOCK / by)
           gx = math.ceil(lengthx / bx)
         else:
-          by = int(1024 / bx)
+          by = int(MAX_THREADS_PER_BLOCK / bx)
           gy = math.ceil(lengthy / by) 
 
       multiply_them_index_add(self.grads_gpu,self.loss_gpu,self.nodesInput_gpu, self.nodes_gpu,startA,startB,startC,startD,numpy.int32(lengthx),numpy.int32(lengthy),
@@ -193,9 +193,9 @@ class Net():
       length = self.layers[0]
       bx = length
       gx = 1
-      if bx > 1024:
-        gx = int(bx / 1024) + 1
-        bx = 1024
+      if bx > MAX_THREADS_PER_BLOCK:
+        gx = int(bx / MAX_THREADS_PER_BLOCK) + 1
+        bx = MAX_THREADS_PER_BLOCK
   
       copy(self.nodes_gpu, img_gpu, numpy.int32(0), numpy.int32(0), numpy.int32(length), block=(bx,1,1), grid=(gx,1))
 
@@ -218,9 +218,9 @@ class Net():
         gx = 1
         gy = 1
         nrA = numpy.int32(self.layers[x+1])
-        if by > 1024:
-          gy = int(by / 1024) + 1
-          by = 1024
+        if by > MAX_THREADS_PER_BLOCK:
+          gy = int(by / MAX_THREADS_PER_BLOCK) + 1
+          by = MAX_THREADS_PER_BLOCK
         #multiply_them_index(float *nodesD, float *weights, float *nodesA, int ncA, int ncB, int nrA, int startn0, int startD, int startW)
         multiply_them_index(self.nodes_gpu, self.weights_gpu, self.nodes_gpu, n_NP, numpy.int32(bx) 
         ,nrA , startn0, startn1,
@@ -230,9 +230,9 @@ class Net():
         start += numpy.int32(self.layers[x])
         bx = length
         gx = 1
-        if bx > 1024:
-          gx = int(bx / 1024) + 1
-          bx = 1024
+        if bx > MAX_THREADS_PER_BLOCK:
+          gx = int(bx / MAX_THREADS_PER_BLOCK) + 1
+          bx = MAX_THREADS_PER_BLOCK
         sigmoid_index(self.nodes_gpu,start,numpy.int32(length),
                       block=(bx,1,1), grid=(gx,1))
 
