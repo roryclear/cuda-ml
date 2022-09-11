@@ -250,7 +250,6 @@ __global__ void multiply_them_index_add(float *nodesD, float *weights, float *in
 {
   int row = threadIdx.y + blockDim.y * blockIdx.y;
   int col = threadIdx.x + blockDim.x * blockIdx.x;
-  float t = 0;
   if(col < ncB && row < nrA)
   {
     nodesD[startD + (row * ncB) + col] -= weights[startW + (row * ncA)] * input[startW + (row * ncA)] * nodesA[startn0 + col];
@@ -262,14 +261,10 @@ __global__ void multiply_them(float *d, float *a, float *b, int ncA, int ncB, in
   int row = threadIdx.y + blockDim.y * blockIdx.y;
   int col = threadIdx.x + blockDim.x * blockIdx.x;
 
-  float t = 0;
   if(col < ncB && row < nrA)
   {
-  for(int i = 0; i < ncA; i++){
-    t += a[(row * ncA) + i] * b[col + (i * ncB)];
+    d[(row * ncB) + col] = a[row * ncA] * b[col];
   }
-  }
-  d[(row * ncB) + col] = t;
 }
 
 __global__ void multiply_them_add(float *d, float *a, float *b, int ncA, int ncB, int nrA)
