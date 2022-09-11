@@ -253,10 +253,7 @@ __global__ void multiply_them_index_add(float *nodesD, float *weights, float *in
   float t = 0;
   if(col < ncB && row < nrA)
   {
-  for(int i = 0; i < ncA; i++){
-    t += -weights[startW + (row * ncA) + i] * input[startW + (row * ncA) + i] * nodesA[startn0 + col + (i * ncB)];
-  }
-    nodesD[startD + (row * ncB) + col] += t;
+    nodesD[startD + (row * ncB) + col] -= weights[startW + (row * ncA)] * input[startW + (row * ncA)] * nodesA[startn0 + col];
   }
 }
 
