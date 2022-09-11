@@ -166,12 +166,13 @@ class Net():
         gy = math.ceil(by / 1024)
         by = 1024
 
-      if by > bx:
-        bx = math.ceil(1024 / by)
-        gx = math.ceil(lengthx / bx)
-      else:
-        by = int(1024 / bx)
-        gy = math.ceil(lengthy / by) 
+      if bx * by > 1024:
+        if by > bx:
+          bx = math.ceil(1024 / by)
+          gx = math.ceil(lengthx / bx)
+        else:
+          by = int(1024 / bx)
+          gy = math.ceil(lengthy / by) 
 
       get_grads(self.grads_gpu,self.loss_gpu,self.nodesInput_gpu, self.nodes_gpu,startA,startB,startC,startD,numpy.int32(lengthx),numpy.int32(lengthy),
                 block=(bx,by,1),grid=(gx,gy))
