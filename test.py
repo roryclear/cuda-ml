@@ -105,12 +105,21 @@ class Net():
       gx = 1
       gy = 1
 
-      bxn = bx
-      byn = by
-      if bx*by > 1024:
-        if bx > by:
-          bxn = int(1024 / by)
-          gx = int(bx / bxn) + 1
+      if bx > 1024:
+        gx = math.ceil(bx / 1024)
+        bx = 1024
+
+      if by > 1024:
+        gy = math.ceil(by / 1024)
+        by = 1024
+
+      if bx * by > 1024:
+        if by > bx:
+          bx = math.ceil(1024 / by)
+          gx = math.ceil(lengthx / bx)
+        else:
+          by = int(1024 / bx)
+          gy = math.ceil(lengthy / by) 
           
       #int ncA, int ncB, int nrA
       startC = numpy.int32(self.layers[0])
@@ -122,7 +131,7 @@ class Net():
       #__global__ void multiply_them_index_add(float *d, float *a, float *b ,float *c, int startA, int startB, int startC, int startD, int ncB, int nrA)
       multiply_them_index_add(self.grads_gpu, self.loss_gpu, self.nodesInput_gpu,
        self.nodes_gpu, startA, startB, startC, startD, ncB, nrA,
-        block=(bxn,by,1), grid=(gx,gy)) 
+        block=(bx,by,1), grid=(gx,gy)) 
       
       #backward first weights ???
       length = self.layers[1] * self.layers[2]
