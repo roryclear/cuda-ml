@@ -99,8 +99,6 @@ class Net():
       get_output_loss(self.loss_gpu, self.nodes_gpu, start, numpy.int32(label_train[i]),
                       block=(bx,1,1),grid=(gx,1))
       
-      n = 1
-      n_NP = numpy.int32(n)
 
       bx = self.layers[1]
       by = self.layers[2]
@@ -121,7 +119,7 @@ class Net():
       ncB = numpy.int32(self.layers[1])
       nrA = numpy.int32(self.layers[2])
       multiply_them_index_add(self.grads_gpu, self.loss_gpu, self.nodesInput_gpu,
-       self.nodes_gpu, n_NP, ncB, nrA, startn0, startD, startW,
+       self.nodes_gpu, startW, startW, startn0, startD, ncB, nrA,
         block=(bxn,by,1), grid=(gx,gy)) 
       
       #backward first weights ???
@@ -246,13 +244,13 @@ mod = comp.SourceModule(
 }
 
 
-__global__ void multiply_them_index_add(float *nodesD, float *weights, float *input ,float *nodesA, int ncA, int ncB, int nrA, int startn0, int startD, int startW)
+__global__ void multiply_them_index_add(float *d, float *a, float *b ,float *c, int startA, int startB, int startC, int startD, int ncB, int nrA)
 {
   int row = threadIdx.y + blockDim.y * blockIdx.y;
   int col = threadIdx.x + blockDim.x * blockIdx.x;
   if(col < ncB && row < nrA)
   {
-    nodesD[startD + (row * ncB) + col] -= weights[startW + row] * input[startW + row] * nodesA[startn0 + col];
+    d[startD + (row * ncB) + col] -= a[startA + row] * b[startB + row] * c[startC + col];
   }
 }
 
