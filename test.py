@@ -148,8 +148,10 @@ class Net():
       get_node_loss(self.loss_gpu,self.loss_gpu,numberOfNodes,startA,
                     numpy.int32(length),block=(bx,1,1),grid=(gx,1))
 
+      startA = numpy.int32(0)
       startB = numpy.int32(self.layers[0])
       startC = numpy.int32(0)
+      startD = numpy.int32(0)
 
       lengthx = self.layers[0]
       lengthy = self.layers[1]
@@ -171,7 +173,7 @@ class Net():
         by = int(1024 / bx)
         gy = math.ceil(lengthy / by) 
 
-      get_grads(self.grads_gpu,self.loss_gpu,self.nodesInput_gpu, self.nodes_gpu,startB,startC,numpy.int32(lengthx),numpy.int32(lengthy),
+      get_grads(self.grads_gpu,self.loss_gpu,self.nodesInput_gpu, self.nodes_gpu,startA,startB,startC,startD,numpy.int32(lengthx),numpy.int32(lengthy),
                 block=(bx,by,1),grid=(gx,gy))
 
     def forward(self):
@@ -339,12 +341,12 @@ __global__ void get_node_loss(float *d, float *a, int n, int startA, int length)
   }
 }
 
-__global__ void get_grads(float *d, float *a, float *b, float *c, int startB, int startC, int lengthx, int lengthy)
+__global__ void get_grads(float *d, float *a, float *b, float *c, int startA ,int startB, int startC, int startD,int lengthx, int lengthy)
 {
   if((threadIdx.x + blockDim.x * blockIdx.x) < lengthx && (threadIdx.y + blockDim.y * blockIdx.y) < lengthy)
   {
-  d[(threadIdx.x + blockDim.x * blockIdx.x) + lengthx * (threadIdx.y + blockDim.y * blockIdx.y)]
-   += a[(threadIdx.y + blockDim.y * blockIdx.y)] * b[startB + (threadIdx.y + blockDim.y * blockIdx.y)] * c[startC + (threadIdx.x + blockDim.x * blockIdx.x)]; 
+  d[startD + (threadIdx.x + blockDim.x * blockIdx.x) + lengthx * (threadIdx.y + blockDim.y * blockIdx.y)]
+   += a[startA + (threadIdx.y + blockDim.y * blockIdx.y)] * b[startB + (threadIdx.y + blockDim.y * blockIdx.y)] * c[startC + (threadIdx.x + blockDim.x * blockIdx.x)]; 
    }
 }
 
@@ -513,7 +515,7 @@ for i in range(len(testNet.layers)-1):
 
 testNet.nodes = numpy.zeros((numberOfNodes, 1),dtype=numpy.float32)
 testNet.grads = numpy.zeros((numberOfWeights, 1),dtype=numpy.float32)
-testNet.loss = numpy.zeros((numberOfWeights, 1),dtype=numpy.float32)
+testNet.loss = numpy.zeros((numberOfNodes, 1),dtype=numpy.float32)
 testNet.nodesInput = numpy.zeros((numberOfNodes, 1),dtype=numpy.float32)
 weights = numpy.zeros((numberOfWeights, 1),dtype=numpy.float32)
 
