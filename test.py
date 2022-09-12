@@ -61,67 +61,39 @@ class Net():
 
     def optimize(self):
       length = len(weights)
-      bx = length
-      gx = 1
-      if bx > MAX_THREADS_PER_BLOCK:
-        gx = int(bx / MAX_THREADS_PER_BLOCK) + 1
-        bx = MAX_THREADS_PER_BLOCK
-      optimize(self.weights_gpu, self.grads_gpu,learningRate, numpy.int32(length), block=(bx,1,1),grid=(gx,1))
+      bx,by,gx,gy = self.getBlockAndGridSize(length,1)
+      optimize(self.weights_gpu, self.grads_gpu,learningRate, numpy.int32(length), block=(bx,by,1),grid=(gx,gy))
 
     def zero_grad(self):
       length = len(weights)
-      bx = length
-      gx = 1
-      if bx > MAX_THREADS_PER_BLOCK:
-        gx = int(bx / MAX_THREADS_PER_BLOCK) + 1
-        bx = MAX_THREADS_PER_BLOCK
-      reset_values(self.grads_gpu,numpy.int32(length),block=(bx,1,1),grid=(gx,1))
+      bx,by,gx,gy = self.getBlockAndGridSize(length,1)
+      reset_values(self.grads_gpu,numpy.int32(length),block=(bx,by,1),grid=(gx,gy))
   
     def backward(self):
       length = len(self.nodesInput)
-      bx = length
-      gx = 1
-      if bx > MAX_THREADS_PER_BLOCK:
-        gx = int(bx / MAX_THREADS_PER_BLOCK) + 1
-        bx = MAX_THREADS_PER_BLOCK
-      der_sigmoid(self.nodesInput_gpu,self.nodes_gpu, numpy.int32(length),block=(bx,1,1),grid=(gx,1))
+
+      bx,by,gx,gy = self.getBlockAndGridSize(length,1)
+
+      der_sigmoid(self.nodesInput_gpu,self.nodes_gpu, numpy.int32(length),block=(bx,by,1),grid=(gx,gy))
 
       start = numpy.int32(self.layers[0] + self.layers[1])
       check_answer(training_correct_gpu, self.nodes_gpu, start, numpy.int32(label_train[i]),block=(1,1,1))
 
       #backward
       start = numpy.int32(self.layers[0] + self.layers[1])
-      bx = self.layers[2]
-      gx = 1
-      if bx > MAX_THREADS_PER_BLOCK:
-        gx = int(bx / MAX_THREADS_PER_BLOCK) + 1
-        bx = MAX_THREADS_PER_BLOCK
+      lengthx = self.layers[2]
+      lengthy = 1
+
+      bx,by,gx,gy = self.getBlockAndGridSize(lengthx,lengthy)
+
       get_output_loss(self.loss_gpu, self.nodes_gpu, start, numpy.int32(label_train[i]),
-                      block=(bx,1,1),grid=(gx,1))
+                      block=(bx,by,1),grid=(gx,gy))
       
       lengthx = self.layers[1]
       lengthy = self.layers[2]
-      bx = lengthx
-      by = lengthy
-      gx = 1
-      gy = 1
 
-      if bx > MAX_THREADS_PER_BLOCK:
-        gx = math.ceil(bx / MAX_THREADS_PER_BLOCK)
-        bx = MAX_THREADS_PER_BLOCK
+      bx,by,gx,gy = self.getBlockAndGridSize(lengthx,lengthy)
 
-      if by > MAX_THREADS_PER_BLOCK:
-        gy = math.ceil(by / MAX_THREADS_PER_BLOCK)
-        by = MAX_THREADS_PER_BLOCK
-
-      if bx * by > MAX_THREADS_PER_BLOCK:
-        if by > bx:
-          bx = math.ceil(MAX_THREADS_PER_BLOCK / by)
-          gx = math.ceil(lengthx / bx)
-        else:
-          by = int(MAX_THREADS_PER_BLOCK / bx)
-          gy = math.ceil(lengthy / by) 
-          
       #int ncA, int ncB, int nrA
       startC = numpy.int32(self.layers[0])
       startD = numpy.int32(self.layers[0] * self.layers[1])
@@ -165,24 +137,8 @@ class Net():
 
       lengthx = self.layers[0]
       lengthy = self.layers[1]
-      bx = lengthx
-      by = lengthy
 
-      if bx > MAX_THREADS_PER_BLOCK:
-        gx = math.ceil(bx / MAX_THREADS_PER_BLOCK)
-        bx = MAX_THREADS_PER_BLOCK
-
-      if by > MAX_THREADS_PER_BLOCK:
-        gy = math.ceil(by / MAX_THREADS_PER_BLOCK)
-        by = MAX_THREADS_PER_BLOCK
-
-      if bx * by > MAX_THREADS_PER_BLOCK:
-        if by > bx:
-          bx = math.ceil(MAX_THREADS_PER_BLOCK / by)
-          gx = math.ceil(lengthx / bx)
-        else:
-          by = int(MAX_THREADS_PER_BLOCK / bx)
-          gy = math.ceil(lengthy / by) 
+      bx,by,gx,gy = self.getBlockAndGridSize(lengthx,lengthy)
 
       multiply_them_index_add(self.grads_gpu,self.loss_gpu,self.nodesInput_gpu, self.nodes_gpu,startA,startB,startC,startD,numpy.int32(lengthx),numpy.int32(lengthy),
                 block=(bx,by,1),grid=(gx,gy))
@@ -191,13 +147,10 @@ class Net():
 
       #copy input (n0_gpu) to nodes_gpu
       length = self.layers[0]
-      bx = length
-      gx = 1
-      if bx > MAX_THREADS_PER_BLOCK:
-        gx = int(bx / MAX_THREADS_PER_BLOCK) + 1
-        bx = MAX_THREADS_PER_BLOCK
+
+      bx,by,gx,gy = self.getBlockAndGridSize(length,1)
   
-      copy(self.nodes_gpu, img_gpu, numpy.int32(0), numpy.int32(0), numpy.int32(length), block=(bx,1,1), grid=(gx,1))
+      copy(self.nodes_gpu, img_gpu, numpy.int32(0), numpy.int32(0), numpy.int32(length), block=(bx,by,1), grid=(gx,gy))
 
       startn0 = numpy.int32(0)
       startn1 = numpy.int32(self.layers[0])
@@ -213,31 +166,46 @@ class Net():
 
         n = self.layers[x] # number of columns in A / number of rows in B
         n_NP = numpy.int32(n)
-        bx = 1 # number of cols in B
-        by = self.layers[x+1] # number of rows in A
-        gx = 1
-        gy = 1
         nrA = numpy.int32(self.layers[x+1])
-        if by > MAX_THREADS_PER_BLOCK:
-          gy = int(by / MAX_THREADS_PER_BLOCK) + 1
-          by = MAX_THREADS_PER_BLOCK
-        #multiply_them_index(float *nodesD, float *weights, float *nodesA, int ncA, int ncB, int nrA, int startn0, int startD, int startW)
+
+        bx,by,gx,gy = self.getBlockAndGridSize(1,self.layers[x+1]) # number of cols in B, number of rows in A
+
         multiply_them_index(self.nodes_gpu, self.weights_gpu, self.nodes_gpu, n_NP, numpy.int32(bx) 
         ,nrA , startn0, startn1,
                               startw, block=(bx,by,1), grid=(gx,gy))
 
         length = self.layers[x+1]
         start += numpy.int32(self.layers[x])
-        bx = length
-        gx = 1
-        if bx > MAX_THREADS_PER_BLOCK:
-          gx = int(bx / MAX_THREADS_PER_BLOCK) + 1
-          bx = MAX_THREADS_PER_BLOCK
+
+        bx,by,gx,gy = self.getBlockAndGridSize(length,1)
+
         sigmoid_index(self.nodes_gpu,start,numpy.int32(length),
-                      block=(bx,1,1), grid=(gx,1))
+                      block=(bx,by,1), grid=(gx,gy))
 
 
       return 0
+
+    def getBlockAndGridSize(self,lengthx,lengthy):
+      bx = lengthx
+      by = lengthy
+      gx = 1
+      gy = 1
+      if bx > MAX_THREADS_PER_BLOCK:
+        gx = math.ceil(bx / MAX_THREADS_PER_BLOCK)
+        bx = MAX_THREADS_PER_BLOCK
+
+      if by > MAX_THREADS_PER_BLOCK:
+        gy = math.ceil(by / MAX_THREADS_PER_BLOCK)
+        by = MAX_THREADS_PER_BLOCK
+
+      if bx * by > MAX_THREADS_PER_BLOCK:
+        if by > bx:
+          bx = math.ceil(MAX_THREADS_PER_BLOCK / by)
+          gx = math.ceil(lengthx / bx)
+        else:
+          by = int(MAX_THREADS_PER_BLOCK / bx)
+          gy = math.ceil(lengthy / by) 
+      return bx,by,gx,gy
 
 mod = comp.SourceModule(
     """
