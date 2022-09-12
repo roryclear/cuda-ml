@@ -26,6 +26,25 @@ class Net():
         self.nodesInput_gpu = None
         self.loss_gpu = None
 
+
+    def setSize(self, layers):
+      self.layers = layers
+      numberOfNodes = 0
+      for i in range(len(self.layers)):
+        numberOfNodes += self.layers[i]
+
+      self.nodesInput = numpy.zeros((numberOfNodes, 1),dtype=numpy.float32)
+
+      numberOfWeights = 0
+      for i in range(len(self.layers)-1):
+        numberOfWeights += self.layers[i] * self.layers[i+1]
+
+      self.nodes = numpy.zeros((numberOfNodes, 1),dtype=numpy.float32)
+      self.grads = numpy.zeros((numberOfWeights, 1),dtype=numpy.float32)
+      self.loss = numpy.zeros((numberOfNodes, 1),dtype=numpy.float32)
+      self.nodesInput = numpy.zeros((numberOfNodes, 1),dtype=numpy.float32)
+      self.weights = numpy.zeros((numberOfWeights, 1),dtype=numpy.float32)
+
     def copyToDevice(self):
       self.weights_gpu = cuda.mem_alloc(self.weights.nbytes)
       self.nodes_gpu = cuda.mem_alloc(self.nodes.nbytes)
@@ -49,23 +68,23 @@ class Net():
         lines = f.readlines()
         for i in range(len(lines)):
           line = lines[i].replace("\n","")
-          weights[i] = line
+          self.weights[i] = line
 
       else:
         print("no weights file was found")    
-        for x in range(len(weights)):
-          weights[x] = numpy.random.uniform() * (2 / numpy.sqrt(testNet.layers[0])) - 1 / numpy.sqrt(testNet.layers[0])
+        for x in range(len(self.weights)):
+          self.weights[x] = numpy.random.uniform() * (2 / numpy.sqrt(testNet.layers[0])) - 1 / numpy.sqrt(testNet.layers[0])
 
-      testNet.weights = weights
+      testNet.weights = self.weights
 
 
     def optimize(self):
-      length = len(weights)
+      length = len(self.weights)
       bx,by,gx,gy = self.getBlockAndGridSize(length,1)
       optimize(self.weights_gpu, self.grads_gpu,learningRate, numpy.int32(length), block=(bx,by,1),grid=(gx,gy))
 
     def zero_grad(self):
-      length = len(weights)
+      length = len(self.weights)
       bx,by,gx,gy = self.getBlockAndGridSize(length,1)
       reset_values(self.grads_gpu,numpy.int32(length),block=(bx,by,1),grid=(gx,gy))
   
@@ -382,23 +401,7 @@ trainImg32 = img_train[0].astype(numpy.float32)
 img_gpu = cuda.mem_alloc(trainImg32.nbytes)
 
 testNet = Net()
-testNet.layers = [784,16,10] #backward function limited to 2 layers atm
-
-numberOfNodes = 0
-for i in range(len(testNet.layers)):
-  numberOfNodes += testNet.layers[i]
-
-testNet.nodesInput = numpy.zeros((numberOfNodes, 1),dtype=numpy.float32)
-
-numberOfWeights = 0
-for i in range(len(testNet.layers)-1):
-  numberOfWeights += testNet.layers[i] * testNet.layers[i+1]
-
-testNet.nodes = numpy.zeros((numberOfNodes, 1),dtype=numpy.float32)
-testNet.grads = numpy.zeros((numberOfWeights, 1),dtype=numpy.float32)
-testNet.loss = numpy.zeros((numberOfNodes, 1),dtype=numpy.float32)
-testNet.nodesInput = numpy.zeros((numberOfNodes, 1),dtype=numpy.float32)
-weights = numpy.zeros((numberOfWeights, 1),dtype=numpy.float32)
+testNet.setSize([784,16,10]) #backward function limited to 2 layers atm
 
 #weightsFile = "sigmoid-weights"
 weightsFile = "sigmoid-untrained-weights"
