@@ -19,6 +19,7 @@ class Net():
         self.grads = None
         self.nodesInput = None
         self.loss = None
+        self.learningRate = None
 
         self.weights_gpu = None
         self.nodes_gpu = None
@@ -81,7 +82,7 @@ class Net():
     def optimize(self):
       length = len(self.weights)
       bx,by,gx,gy = self.getBlockAndGridSize(length,1)
-      optimize(self.weights_gpu, self.grads_gpu,learningRate, numpy.int32(length), block=(bx,by,1),grid=(gx,gy))
+      optimize(self.weights_gpu, self.grads_gpu,self.learningRate, numpy.int32(length), block=(bx,by,1),grid=(gx,gy))
 
     def zero_grad(self):
       length = len(self.weights)
@@ -406,13 +407,11 @@ testNet.setSize([784,16,10]) #backward function limited to 2 layers atm
 #weightsFile = "sigmoid-weights"
 weightsFile = "sigmoid-untrained-weights"
 testNet.loadWeights(weightsFile)
-
-
+testNet.learningRate = numpy.float32(0.1)
 testNet.copyToDevice()
 
 # --- training ---
 
-learningRate = numpy.float32(0.1)
 batchSize = 1
 for epoch in range(1):
   print("\nEPOCH",epoch,"\n")
