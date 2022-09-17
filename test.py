@@ -75,13 +75,12 @@ class Net():
       bx,by,gx,gy = self.getBlockAndGridSize(length,1)
       reset_values(self.grads_gpu,numpy.int32(length),block=(bx,by,1),grid=(gx,gy))
   
-    def backward(self):
+    def backward(self, answer):
       length = len(self.nodesGrad)
 
       bx,by,gx,gy = self.getBlockAndGridSize(length,1)
 
       der_sigmoid(self.nodesGrad_gpu,self.nodes_gpu, numpy.int32(length),block=(bx,by,1),grid=(gx,gy))
-
       numberOfLayers = len(self.layers)
 
       startw0 = numpy.int32(len(self.weights) - (self.layers[numberOfLayers-1] * self.layers[numberOfLayers-2]))
@@ -93,18 +92,19 @@ class Net():
 
       ###---------------------------
 
-      start = startn1
-      check_answer(training_correct_gpu, self.nodes_gpu, start, numpy.int32(label_train[i]),block=(1,1,1))
+      if(answer > -1):
+        start = startn1
+        check_answer(training_correct_gpu, self.nodes_gpu, start, numpy.int32(answer),block=(1,1,1))
 
-      #backward
-      start = startn1
-      lengthx = lengthn1
-      lengthy = 1
+        #backward
+        start = startn1
+        lengthx = lengthn1
+        lengthy = 1
 
-      bx,by,gx,gy = self.getBlockAndGridSize(lengthx,lengthy)
-
-      get_output_loss(self.loss_gpu, self.nodes_gpu, start, numpy.int32(label_train[i]),
-                      block=(bx,by,1),grid=(gx,gy))
+        bx,by,gx,gy = self.getBlockAndGridSize(lengthx,lengthy)
+        #print(bx,by,gx,gy)
+        get_output_loss(self.loss_gpu, self.nodes_gpu, start, numpy.int32(answer),
+                        block=(bx,by,1),grid=(gx,gy))
       
       lengthx = lengthn0
       lengthy = lengthn1
@@ -175,7 +175,7 @@ class Net():
         bx,by,gx,gy = self.getBlockAndGridSize(lengthx,lengthy)
 
         multiply_them_index_add(self.grads_gpu,self.loss_gpu,self.nodesGrad_gpu, self.nodes_gpu,startA,startB,startC,startD,numpy.int32(lengthx),numpy.int32(lengthy),
-                  block=(bx,by,1),grid=(gx,gy))
+                  block=(bx,by,1),grid=(gx,gy))        
 
     def forward(self, input):
 
@@ -234,10 +234,10 @@ class Net():
 
       if bx * by > MAX_THREADS_PER_BLOCK:
         if by > bx:
-          bx = math.ceil(MAX_THREADS_PER_BLOCK / by)
+          bx = math.floor(MAX_THREADS_PER_BLOCK / by)
           gx = math.ceil(lengthx / bx)
         else:
-          by = int(MAX_THREADS_PER_BLOCK / bx)
+          by = math.floor(MAX_THREADS_PER_BLOCK / bx)
           gy = math.ceil(lengthy / by) 
       return bx,by,gx,gy
 
