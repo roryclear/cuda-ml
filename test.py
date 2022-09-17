@@ -31,6 +31,7 @@ class Net():
 
       self.grads = numpy.zeros((self.numberOfWeights, 1),dtype=numpy.float32)
       self.weights = numpy.zeros((self.numberOfWeights, 1),dtype=numpy.float32)
+      self.weightsLoss = numpy.zeros((self.numberOfWeights, 1),dtype=numpy.float32)
 
     def copyToDevice(self):
       self.weights_gpu = cuda.mem_alloc(self.weights.nbytes)
@@ -43,6 +44,9 @@ class Net():
       cuda.memcpy_htod(self.nodesInput_gpu,self.nodesInput)
       self.loss_gpu = cuda.mem_alloc(self.loss.nbytes)
       cuda.memcpy_htod(self.loss_gpu,self.loss)
+
+      self.weightsLoss_gpu = cuda.mem_alloc(self.weightsLoss.nbytes)
+      cuda.memcpy_htod(self.weightsLoss_gpu,self.weightsLoss)
 
     def loadWeights(self, path):
       weightsFile = path
@@ -57,7 +61,7 @@ class Net():
           self.weights[i] = line
 
       else:
-        print("no weights file was found")
+        print("no weights file was found")    
         for x in range(len(self.weights)):
           self.weights[x] = numpy.random.uniform() * (2 / numpy.sqrt(self.layers[0])) - 1 / numpy.sqrt(self.layers[0])
 
@@ -85,7 +89,6 @@ class Net():
       startn0 = startn1 - numpy.int32(self.layers[numberOfLayers-2])
       lengthn0 = self.layers[numberOfLayers-2]
       lengthn1 = self.layers[numberOfLayers-1]
-      lengthw0 = self.layers[numberOfLayers-3] * self.layers[numberOfLayers-2]
       lengthw1 = self.layers[numberOfLayers-2] * self.layers[numberOfLayers-1]
 
       ###---------------------------
@@ -118,7 +121,7 @@ class Net():
       #__global__ void multiply_them_index_minus(float *d, float *a, float *b ,float *c, int startA, int startB, int startC, int startD, int ncB, int nrA)
       multiply_them_index_add(self.grads_gpu, self.loss_gpu, self.nodesInput_gpu,
        self.nodes_gpu, startA, startB, startC, startD, ncB, nrA,
-        block=(bx,by,1), grid=(gx,gy))
+        block=(bx,by,1), grid=(gx,gy)) 
       
       #backward first weights ???
       startw1 = numpy.int32(len(self.weights))
@@ -134,6 +137,9 @@ class Net():
         lengthn1 = self.layers[numberOfLayers-2-y]
         lengthn2 = self.layers[numberOfLayers-1-y]
 
+        lengthw1 = self.layers[numberOfLayers-3-y] * self.layers[numberOfLayers-2-y]
+        #print("lengthw1 =",lengthw1)
+
         length = lengthw1
         bx = length
         gx = 1
@@ -143,7 +149,7 @@ class Net():
         startD = startn1
         startA = startw1
         startB = startw1
-        array_mulitply(self.loss_gpu,self.weights_gpu,self.grads_gpu,startD,startA,startB,numpy.int32(length)
+        array_mulitply(self.weightsLoss_gpu,self.weights_gpu,self.grads_gpu,startD,startA,startB,numpy.int32(length)
         ,block=(bx,1,1),grid=(gx,1))
 
         startA = startn1
@@ -155,7 +161,7 @@ class Net():
           gx = int(bx / MAX_THREADS_PER_BLOCK) + 1
           bx = MAX_THREADS_PER_BLOCK
         numberOfNodesInLayer = numpy.int32(lengthn2)
-        get_node_loss(self.loss_gpu,numberOfNodesInLayer,startA,startD,
+        get_node_loss(self.loss_gpu,self.weightsLoss_gpu,numberOfNodesInLayer,startA,startD,
                       numpy.int32(length),block=(bx,1,1),grid=(gx,1))
 
         startA = startn0
@@ -198,7 +204,7 @@ class Net():
 
         bx,by,gx,gy = self.getBlockAndGridSize(1,self.layers[x+1]) # number of cols in B, number of rows in A
 
-        multiply_them_index(self.nodes_gpu, self.weights_gpu, self.nodes_gpu, n_NP, numpy.int32(bx)
+        multiply_them_index(self.nodes_gpu, self.weights_gpu, self.nodes_gpu, n_NP, numpy.int32(bx) 
         ,nrA , startn0, startn1,
                               startw, block=(bx,by,1), grid=(gx,gy))
 
@@ -232,7 +238,7 @@ class Net():
           gx = math.ceil(lengthx / bx)
         else:
           by = int(MAX_THREADS_PER_BLOCK / bx)
-          gy = math.ceil(lengthy / by)
+          gy = math.ceil(lengthy / by) 
       return bx,by,gx,gy
 
 mod = comp.SourceModule(
@@ -292,19 +298,19 @@ __global__ void get_output_loss(float *d, float *o, int start, int a)
   }
 }
 
-__global__ void get_node_loss(float *d, int n, int startA, int startD, int length)
+__global__ void get_node_loss(float *d, float *a, int n, int startA, int startD, int length)
 {
   int i = threadIdx.x + blockDim.x * blockIdx.x;
   float t = 0;
-  for(int j = 0; j < n; j++)
+  for(int j = 0; j < n; j++) 
   {
     if(i < length)
     {
-    t += d[startA + i + j*length];
+    t += a[startA + i + j*length];
     }
   }
   if(i < length)
-  {
+  { 
   d[startD + i] = t / n;
   }
 }
@@ -382,7 +388,7 @@ def test(testNet):
   for x in range(len(testNet.layers)-1):
     start += numpy.int32(testNet.layers[x])
   for i in range(len(img_test)):
-    testImg32 = img_test[i].astype(numpy.float32)
+    testImg32 = img_test[i].astype(numpy.float32)  
     cuda.memcpy_htod(img_gpu, testImg32)
 
     testNet.forward()
@@ -391,7 +397,7 @@ def test(testNet):
   cuda.memcpy_dtoh(test_correct,test_correct_gpu)
   print("test dataset: correct = ",(test_correct[0]/len(img_test)))
 
-#---- mnist stuff ----
+#---- mnist stuff ---- 
 
 (img_train, label_train), (img_test, label_test) = keras.datasets.mnist.load_data()
 
@@ -408,36 +414,3 @@ cuda.memcpy_htod(test_correct_gpu,test_correct)
 
 trainImg32 = img_train[0].astype(numpy.float32)
 img_gpu = cuda.mem_alloc(trainImg32.nbytes)
-
-testNet = Net()
-testNet.setSize([784,16,10]) #backward function limited to 2 layers atm
-
-#weightsFile = "sigmoid-weights"
-weightsFile = "sigmoid-untrained-weights"
-testNet.loadWeights(weightsFile)
-testNet.learningRate = numpy.float32(0.1)
-testNet.copyToDevice()
-
-# --- training ---
-
-batchSize = 1
-for epoch in range(1):
-  print("\nEPOCH",epoch,"\n")
-  start_time = time.time()
-  for i in range(len(img_train)): 
-    trainImg32 = img_train[i].astype(numpy.float32)
-    cuda.memcpy_htod(img_gpu,trainImg32)
-
-    testNet.forward()
-
-    testNet.backward()
-    
-    if i % batchSize == 0 or i == (len(img_train) - 1):
-      testNet.optimize()      
-      testNet.zero_grad()  
-
-  print("--- %s seconds ---" % (time.time() - start_time))
-  cuda.memcpy_dtoh(training_correct,training_correct_gpu)
-  reset_values(training_correct_gpu,numpy.int32(1),block=(1,1,1))
-  print("train dataset: correct = ",(training_correct[0]/len(img_train)))
-  test()
