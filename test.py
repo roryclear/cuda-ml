@@ -21,7 +21,7 @@ class Net():
       for i in range(len(self.layers)):
         self.numberOfNodes += self.layers[i]
 
-      self.nodesInput = numpy.zeros((self.numberOfNodes, 1),dtype=numpy.float32)
+      self.nodesGrad = numpy.zeros((self.numberOfNodes, 1),dtype=numpy.float32)
       self.nodes = numpy.zeros((self.numberOfNodes, 1),dtype=numpy.float32)
       self.loss = numpy.zeros((self.numberOfNodes, 1),dtype=numpy.float32)
 
@@ -40,8 +40,8 @@ class Net():
       cuda.memcpy_htod(self.nodes_gpu,self.nodes)
       self.grads_gpu = cuda.mem_alloc(self.grads.nbytes)
       cuda.memcpy_htod(self.grads_gpu,self.grads)
-      self.nodesInput_gpu = cuda.mem_alloc(self.nodesInput.nbytes)
-      cuda.memcpy_htod(self.nodesInput_gpu,self.nodesInput)
+      self.nodesGrad_gpu = cuda.mem_alloc(self.nodesGrad.nbytes)
+      cuda.memcpy_htod(self.nodesGrad_gpu,self.nodesGrad)
       self.loss_gpu = cuda.mem_alloc(self.loss.nbytes)
       cuda.memcpy_htod(self.loss_gpu,self.loss)
 
@@ -76,11 +76,11 @@ class Net():
       reset_values(self.grads_gpu,numpy.int32(length),block=(bx,by,1),grid=(gx,gy))
   
     def backward(self):
-      length = len(self.nodesInput)
+      length = len(self.nodesGrad)
 
       bx,by,gx,gy = self.getBlockAndGridSize(length,1)
 
-      der_sigmoid(self.nodesInput_gpu,self.nodes_gpu, numpy.int32(length),block=(bx,by,1),grid=(gx,gy))
+      der_sigmoid(self.nodesGrad_gpu,self.nodes_gpu, numpy.int32(length),block=(bx,by,1),grid=(gx,gy))
 
       numberOfLayers = len(self.layers)
 
@@ -119,7 +119,7 @@ class Net():
       ncB = numpy.int32(lengthn0)
       nrA = numpy.int32(lengthn1)
       #__global__ void multiply_them_index_minus(float *d, float *a, float *b ,float *c, int startA, int startB, int startC, int startD, int ncB, int nrA)
-      multiply_them_index_add(self.grads_gpu, self.loss_gpu, self.nodesInput_gpu,
+      multiply_them_index_add(self.grads_gpu, self.loss_gpu, self.nodesGrad_gpu,
        self.nodes_gpu, startA, startB, startC, startD, ncB, nrA,
         block=(bx,by,1), grid=(gx,gy)) 
       
@@ -174,7 +174,7 @@ class Net():
 
         bx,by,gx,gy = self.getBlockAndGridSize(lengthx,lengthy)
 
-        multiply_them_index_add(self.grads_gpu,self.loss_gpu,self.nodesInput_gpu, self.nodes_gpu,startA,startB,startC,startD,numpy.int32(lengthx),numpy.int32(lengthy),
+        multiply_them_index_add(self.grads_gpu,self.loss_gpu,self.nodesGrad_gpu, self.nodes_gpu,startA,startB,startC,startD,numpy.int32(lengthx),numpy.int32(lengthy),
                   block=(bx,by,1),grid=(gx,gy))
 
     def forward(self):
