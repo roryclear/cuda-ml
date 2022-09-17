@@ -177,14 +177,14 @@ class Net():
         multiply_them_index_add(self.grads_gpu,self.loss_gpu,self.nodesGrad_gpu, self.nodes_gpu,startA,startB,startC,startD,numpy.int32(lengthx),numpy.int32(lengthy),
                   block=(bx,by,1),grid=(gx,gy))
 
-    def forward(self):
+    def forward(self, input):
 
       #copy input (n0_gpu) to nodes_gpu
       length = self.layers[0]
 
       bx,by,gx,gy = self.getBlockAndGridSize(length,1)
   
-      copy(self.nodes_gpu, img_gpu, numpy.int32(0), numpy.int32(0), numpy.int32(length), block=(bx,by,1), grid=(gx,gy))
+      copy(self.nodes_gpu, input, numpy.int32(0), numpy.int32(0), numpy.int32(length), block=(bx,by,1), grid=(gx,gy))
 
       startn0 = numpy.int32(0)
       startn1 = numpy.int32(self.layers[0])
@@ -391,7 +391,7 @@ def test(testNet):
     testImg32 = img_test[i].astype(numpy.float32)  
     cuda.memcpy_htod(img_gpu, testImg32)
 
-    testNet.forward()
+    testNet.forward(img_gpu)
     check_answer(test_correct_gpu, testNet.nodes_gpu, start, numpy.int32(label_test[i]),block=(1,1,1))
   print("--- %s seconds ---" % (time.time() - start_time))
   cuda.memcpy_dtoh(test_correct,test_correct_gpu)
