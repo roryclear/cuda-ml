@@ -325,7 +325,7 @@ __global__ void check_answer(int *a, float *output, int start,int answer)
 {
   for(int i = 0; i < 10; i++)
   {
-    if(output[start + i] > output[start + answer])
+    if(i != answer && output[start + i] >= output[start + answer])
     {
       return;
     }
