@@ -75,7 +75,19 @@ class Net():
       bx,by,gx,gy = self.getBlockAndGridSize(length,1)
       reset_values(self.grads_gpu,numpy.int32(length),block=(bx,by,1),grid=(gx,gy))
   
-    def backward(self, answer):
+    def getLoss(self, answer):
+        numberOfLayers = len(self.layers)
+        start = numpy.int32(self.numberOfNodes - self.layers[numberOfLayers-1])
+        check_answer(training_correct_gpu, self.nodes_gpu, start, numpy.int32(answer),block=(1,1,1))
+
+        lengthx = self.layers[numberOfLayers-1]
+        lengthy = 1
+
+        bx,by,gx,gy = self.getBlockAndGridSize(lengthx,lengthy)
+        get_output_loss(self.loss_gpu, self.nodes_gpu, start, numpy.int32(answer),
+                        block=(bx,by,1),grid=(gx,gy))
+
+    def backward(self):
       length = len(self.nodesGrad)
 
       bx,by,gx,gy = self.getBlockAndGridSize(length,1)
@@ -89,22 +101,6 @@ class Net():
       lengthn0 = self.layers[numberOfLayers-2]
       lengthn1 = self.layers[numberOfLayers-1]
       lengthw1 = self.layers[numberOfLayers-2] * self.layers[numberOfLayers-1]
-
-      ###---------------------------
-
-      if(answer > -1):
-        start = startn1
-        check_answer(training_correct_gpu, self.nodes_gpu, start, numpy.int32(answer),block=(1,1,1))
-
-        #backward
-        start = startn1
-        lengthx = lengthn1
-        lengthy = 1
-
-        bx,by,gx,gy = self.getBlockAndGridSize(lengthx,lengthy)
-        #print(bx,by,gx,gy)
-        get_output_loss(self.loss_gpu, self.nodes_gpu, start, numpy.int32(answer),
-                        block=(bx,by,1),grid=(gx,gy))
       
       lengthx = lengthn0
       lengthy = lengthn1
