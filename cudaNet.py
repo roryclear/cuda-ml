@@ -35,18 +35,21 @@ class Net():
 
     def copyToDevice(self):
       self.weights_gpu = cuda.mem_alloc(self.weights.nbytes)
-      cuda.memcpy_htod(self.weights_gpu,self.weights)
       self.nodes_gpu = cuda.mem_alloc(self.nodes.nbytes)
-      cuda.memcpy_htod(self.nodes_gpu,self.nodes)
       self.grads_gpu = cuda.mem_alloc(self.grads.nbytes)
-      cuda.memcpy_htod(self.grads_gpu,self.grads)
       self.nodesGrad_gpu = cuda.mem_alloc(self.nodesGrad.nbytes)
-      cuda.memcpy_htod(self.nodesGrad_gpu,self.nodesGrad)
       self.loss_gpu = cuda.mem_alloc(self.loss.nbytes)
-      cuda.memcpy_htod(self.loss_gpu,self.loss)
 
       self.weightsLoss_gpu = cuda.mem_alloc(self.weightsLoss.nbytes)
+
+      cuda.memcpy_htod(self.weights_gpu,self.weights)
+      cuda.memcpy_htod(self.nodes_gpu,self.nodes)
+      cuda.memcpy_htod(self.grads_gpu,self.grads)
+      cuda.memcpy_htod(self.nodesGrad_gpu,self.nodesGrad)
+      cuda.memcpy_htod(self.loss_gpu,self.loss)
+
       cuda.memcpy_htod(self.weightsLoss_gpu,self.weightsLoss)
+
 
     def loadWeights(self, path):
       weightsFile = path
@@ -69,6 +72,14 @@ class Net():
           for y in range(numberOfWeights):
             self.weights[start + y] = numpy.random.uniform() * (2 / numpy.sqrt(layerSize)) - 1 / numpy.sqrt(layerSize)
           start += numberOfWeights
+
+    def free(self):
+      self.weights_gpu.free()
+      self.nodes_gpu.free()
+      self.grads_gpu.free()
+      self.nodesGrad_gpu.free()
+      self.loss_gpu.free()
+      self.weightsLoss_gpu.free()
 
     def optimize(self):
       length = len(self.weights)

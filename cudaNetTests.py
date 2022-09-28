@@ -16,7 +16,7 @@ batchSize = 1
 for epoch in range(1):
   print("\nEPOCH",epoch,"\n")
   start_time = time.time()
-  for i in range(len(img_train)): 
+  for i in range(len(img_train)):
     trainImg32 = img_train[i].astype(numpy.float32)
     cuda.memcpy_htod(img_gpu,trainImg32)
 
@@ -25,8 +25,8 @@ for epoch in range(1):
     testNet.backward()
     
     if i % batchSize == 0 or i == (len(img_train) - 1):
-      testNet.optimize()      
-      testNet.zero_grad()  
+      testNet.optimize()
+      testNet.zero_grad()
 
   print("--- %s seconds ---" % (time.time() - start_time))
   cuda.memcpy_dtoh(training_correct,training_correct_gpu)
@@ -34,9 +34,10 @@ for epoch in range(1):
   print("train dataset: correct = ",(training_correct[0]/len(img_train)))
   test(testNet)
 assert test_correct[0]/len(img_test) == 0.8948,"test accuracy has changed."
+testNet.free()
 
 testNet = Net()
-testNet.setSize([784,4,10]) 
+testNet.setSize([784,4,10])
 #weightsFile = "sigmoid-weights"
 weightsFile = "sigmoid-untrained-weights"
 testNet.loadWeights(weightsFile)
@@ -48,7 +49,7 @@ batchSize = 1
 for epoch in range(1):
   print("\nEPOCH",epoch,"\n")
   start_time = time.time()
-  for i in range(len(img_train)): 
+  for i in range(len(img_train)):
     trainImg32 = img_train[i].astype(numpy.float32)
     cuda.memcpy_htod(img_gpu,trainImg32)
 
@@ -57,8 +58,8 @@ for epoch in range(1):
     testNet.backward()
     
     if i % batchSize == 0 or i == (len(img_train) - 1):
-      testNet.optimize()      
-      testNet.zero_grad()  
+      testNet.optimize()
+      testNet.zero_grad()
 
   print("--- %s seconds ---" % (time.time() - start_time))
   cuda.memcpy_dtoh(training_correct,training_correct_gpu)
@@ -66,6 +67,7 @@ for epoch in range(1):
   print("train dataset: correct = ",(training_correct[0]/len(img_train)))
   test(testNet)
 assert test_correct[0]/len(img_test) == 0.7046,"test accuracy has changed."
+testNet.free()
 
 testNet = Net()
 testNet.learningRate = numpy.float32(0.1)
@@ -78,7 +80,7 @@ batchSize = 1
 for epoch in range(1):
   print("\nEPOCH",epoch,"\n")
   start_time = time.time()
-  for i in range(10000): 
+  for i in range(10000):
     trainImg32 = img_train[i].astype(numpy.float32)
     cuda.memcpy_htod(img_gpu,trainImg32)
 
@@ -87,8 +89,8 @@ for epoch in range(1):
     testNet.backward()
     
     if i % batchSize == 0 or i == (len(img_train) - 1):
-      testNet.optimize()      
-      testNet.zero_grad()  
+      testNet.optimize()
+      testNet.zero_grad()
 
   print("--- %s seconds ---" % (time.time() - start_time))
   cuda.memcpy_dtoh(training_correct,training_correct_gpu)
@@ -96,10 +98,11 @@ for epoch in range(1):
   print("train dataset: correct = ",(training_correct[0]/len(img_train)))
   test(testNet)
 assert test_correct[0]/len(img_test) == 0.593,"test accuracy has changed."
+testNet.free()
 
 testNet = Net()
 testNet.learningRate = numpy.float32(1)
-testNet.setSize([784,16,10,10]) 
+testNet.setSize([784,16,10,10])
 #weightsFile = "sigmoid-weights"
 testNet.loadWeights("sigmoid-untrained-weights")
 testNet.copyToDevice()
@@ -108,7 +111,7 @@ batchSize = 1
 for epoch in range(1):
   print("\nEPOCH",epoch,"\n")
   start_time = time.time()
-  for i in range(len(img_train)): 
+  for i in range(len(img_train)):
     trainImg32 = img_train[i].astype(numpy.float32)
     cuda.memcpy_htod(img_gpu,trainImg32)
 
@@ -117,8 +120,8 @@ for epoch in range(1):
     testNet.backward()
     
     if i % batchSize == 0 or i == (len(img_train) - 1):
-      testNet.optimize()      
-      testNet.zero_grad()  
+      testNet.optimize()
+      testNet.zero_grad()
 
   print("--- %s seconds ---" % (time.time() - start_time))
   cuda.memcpy_dtoh(training_correct,training_correct_gpu)
@@ -126,3 +129,4 @@ for epoch in range(1):
   print("train dataset: correct = ",(training_correct[0]/len(img_train)))
   test(testNet)
 assert test_correct[0]/len(img_test) == 0.8181,"test accuracy has changed."
+testNet.free()
