@@ -63,6 +63,15 @@ class Net():
           line = lines[i].replace("\n","")
           self.weights[i] = line
 
+    def initWeights(self):
+      start = 0
+      for x in range(len(self.layers)-1):
+        numberOfWeights = self.layers[x] * self.layers[x+1]
+        layerSize = self.layers[x]
+        for y in range(numberOfWeights):
+          self.weights[start + y] = numpy.random.uniform() * (2 / numpy.sqrt(layerSize)) - 1 / numpy.sqrt(layerSize)
+        start += numberOfWeights
+
       else:
         print("\nno weights file was found")
         start = 0
@@ -123,19 +132,16 @@ class Net():
 
       bx,by,gx,gy = self.getBlockAndGridSize(lengthx,lengthy)
 
-      #int ncA, int ncB, int nrA
       startC = startn0
       startD = startw0
       startA = startn1
       startB = startA
       ncB = numpy.int32(lengthn0)
       nrA = numpy.int32(lengthn1)
-      #__global__ void multiply_them_index_minus(float *d, float *a, float *b ,float *c, int startA, int startB, int startC, int startD, int ncB, int nrA)
-      multiply_them_index_add(self.grads_gpu, self.loss_gpu, self.nodesGrad_gpu,
+      multiply_them_3(self.grads_gpu, self.loss_gpu, self.nodesGrad_gpu,
        self.nodes_gpu, startA, startB, startC, startD, ncB, nrA,
         block=(bx,by,1), grid=(gx,gy))
       
-      #backward first weights ???
       startw1 = numpy.int32(len(self.weights))
       for y in range(len(self.layers)-2):
 
@@ -153,28 +159,20 @@ class Net():
         #print("lengthw1 =",lengthw1)
 
         length = lengthw1
-        bx = length
-        gx = 1
-        if bx > MAX_THREADS_PER_BLOCK:
-          gx = int(bx / MAX_THREADS_PER_BLOCK) + 1
-          bx = MAX_THREADS_PER_BLOCK
+        bx,by,gx,gy = self.getBlockAndGridSize(length,1)
         startD = startn1
         startA = startw1
         startB = startw1
         array_mulitply(self.weightsLoss_gpu,self.weights_gpu,self.grads_gpu,startD,startA,startB,numpy.int32(length)
-        ,block=(bx,1,1),grid=(gx,1))
+        ,block=(bx,by,1),grid=(gx,gy))
 
         startA = startn1
         length = lengthn1
         startD = startn0
-        bx = length
-        gx = 1
-        if bx > MAX_THREADS_PER_BLOCK:
-          gx = int(bx / MAX_THREADS_PER_BLOCK) + 1
-          bx = MAX_THREADS_PER_BLOCK
+        bx,by,gx,gy = self.getBlockAndGridSize(length,1)
         numberOfNodesInLayer = numpy.int32(lengthn2)
         get_node_loss(self.loss_gpu,self.weightsLoss_gpu,numberOfNodesInLayer,startA,startD,
-                      numpy.int32(length),block=(bx,1,1),grid=(gx,1))
+                      numpy.int32(length),block=(bx,by,1),grid=(gx,gy))
 
         startA = startn0
         startB = startn1
@@ -186,7 +184,7 @@ class Net():
 
         bx,by,gx,gy = self.getBlockAndGridSize(lengthx,lengthy)
 
-        multiply_them_index_add(self.grads_gpu,self.loss_gpu,self.nodesGrad_gpu, self.nodes_gpu,startA,startB,startC,startD,numpy.int32(lengthx),numpy.int32(lengthy),
+        multiply_them_3(self.grads_gpu,self.loss_gpu,self.nodesGrad_gpu, self.nodes_gpu,startA,startB,startC,startD,numpy.int32(lengthx),numpy.int32(lengthy),
                   block=(bx,by,1),grid=(gx,gy))
 
     def forward(self, input):
@@ -216,7 +214,7 @@ class Net():
 
         bx,by,gx,gy = self.getBlockAndGridSize(1,self.layers[x+1]) # number of cols in B, number of rows in A
 
-        multiply_them_index(self.nodes_gpu, self.weights_gpu, self.nodes_gpu, n_NP, numpy.int32(bx)
+        multiply_them(self.nodes_gpu, self.weights_gpu, self.nodes_gpu, n_NP, numpy.int32(bx)
         ,nrA , startn0, startn1,
                               startw, block=(bx,by,1), grid=(gx,gy))
 
@@ -225,11 +223,9 @@ class Net():
 
         bx,by,gx,gy = self.getBlockAndGridSize(length,1)
 
-        sigmoid_index(self.nodes_gpu,start,numpy.int32(length),
+        sigmoid(self.nodes_gpu,start,numpy.int32(length),
                       block=(bx,by,1), grid=(gx,gy))
-
-
-      return 0
+      return
 
     def getBlockAndGridSize(self,lengthx,lengthy):
       bx = lengthx
@@ -255,7 +251,7 @@ class Net():
 
 mod = comp.SourceModule(
     """
-  __global__ void multiply_them_index(float *nodesD, float *weights, float *nodesA, int ncA, int ncB, int nrA, int startn0, int startD, int startW)
+  __global__ void multiply_them(float *nodesD, float *weights, float *nodesA, int ncA, int ncB, int nrA, int startn0, int startD, int startW)
 {
   int row = threadIdx.y + blockDim.y * blockIdx.y;
   int col = threadIdx.x + blockDim.x * blockIdx.x;
@@ -270,7 +266,7 @@ mod = comp.SourceModule(
 }
 
 
-__global__ void multiply_them_index_add(float *d, float *a, float *b ,float *c, int startA, int startB, int startC, int startD, int ncB, int nrA)
+__global__ void multiply_them_3(float *d, float *a, float *b ,float *c, int startA, int startB, int startC, int startD, int ncB, int nrA)
 {
   int row = threadIdx.y + blockDim.y * blockIdx.y;
   int col = threadIdx.x + blockDim.x * blockIdx.x;
@@ -349,7 +345,7 @@ __global__ void check_answer(int *a, float *output, int start,int answer)
   a[0] = a[0] + 1;
 }
 
-__global__ void sigmoid_index(float *d, int start, int length)
+__global__ void sigmoid(float *d, int start, int length)
 {
   const int i = threadIdx.x + blockDim.x * blockIdx.x;
   if(i < length)
@@ -381,10 +377,10 @@ __global__ void copy(float *d, float *a, int startA, int startD, int length)
 MAX_THREADS_PER_BLOCK = \
     cuda.Device(0).get_attribute(pycuda._driver.device_attribute.MAX_THREADS_PER_BLOCK)
 
-multiply_them_index = mod.get_function("multiply_them_index")
-multiply_them_index_add = mod.get_function("multiply_them_index_add") #adds to result
+multiply_them = mod.get_function("multiply_them")
+multiply_them_3 = mod.get_function("multiply_them_3")
 optimize = mod.get_function("optimize")
-sigmoid_index = mod.get_function("sigmoid_index")
+sigmoid = mod.get_function("sigmoid")
 der_sigmoid = mod.get_function("der_sigmoid")
 array_mulitply = mod.get_function("array_mulitply")
 get_output_loss = mod.get_function("get_output_loss")
