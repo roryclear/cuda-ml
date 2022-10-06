@@ -103,7 +103,6 @@ class Net():
     def getLoss(self, answer):
         numberOfLayers = len(self.layers)
         start = numpy.int32(self.numberOfNodes - self.layers[numberOfLayers-1])
-        check_answer(training_correct_gpu, self.nodes_gpu, start, numpy.int32(answer),block=(1,1,1))
 
         lengthx = self.layers[numberOfLayers-1]
         lengthy = 1
@@ -404,6 +403,11 @@ def test(testNet):
   print("--- %s seconds ---" % (time.time() - start_time))
   cuda.memcpy_dtoh(test_correct,test_correct_gpu)
   print("test dataset: correct = ",(test_correct[0]/len(img_test)))
+
+def checkTrainingAnswer(testNet, answer):
+  numberOfLayers = len(testNet.layers)
+  start = numpy.int32(testNet.numberOfNodes - testNet.layers[numberOfLayers-1])
+  check_answer(training_correct_gpu, testNet.nodes_gpu, start, numpy.int32(answer),block=(1,1,1))
 
 #---- mnist stuff ----
 

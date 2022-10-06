@@ -22,6 +22,7 @@ for epoch in range(1):
 
     testNet.forward(img_gpu)
     testNet.getLoss(label_train[i])
+    checkTrainingAnswer(testNet,label_train[i])
     testNet.backward()
     
     if i % batchSize == 0 or i == (len(img_train) - 1):
@@ -55,6 +56,7 @@ for epoch in range(1):
 
     testNet.forward(img_gpu)
     testNet.getLoss(label_train[i])
+    checkTrainingAnswer(testNet,label_train[i])
     testNet.backward()
     
     if i % batchSize == 0 or i == (len(img_train) - 1):
@@ -86,6 +88,7 @@ for epoch in range(1):
 
     testNet.forward(img_gpu)
     testNet.getLoss(label_train[i])
+    checkTrainingAnswer(testNet,label_train[i])
     testNet.backward()
     
     if i % batchSize == 0 or i == (len(img_train) - 1):
@@ -117,6 +120,7 @@ for epoch in range(1):
 
     testNet.forward(img_gpu)
     testNet.getLoss(label_train[i])
+    checkTrainingAnswer(testNet,label_train[i])
     testNet.backward()
     
     if i % batchSize == 0 or i == (len(img_train) - 1):
