@@ -7,11 +7,7 @@ import math
 from tensorflow import keras
 from os.path import exists
 
-#pip install pycuda
-#pip install tensorflow
-
 class Net():
-    #This defines the structure of the NN.
     def __init__(self):
         super(Net, self).__init__()
 
@@ -62,16 +58,6 @@ class Net():
         for i in range(len(lines)):
           line = lines[i].replace("\n","")
           self.weights[i] = line
-
-    def initWeights(self):
-      start = 0
-      for x in range(len(self.layers)-1):
-        numberOfWeights = self.layers[x] * self.layers[x+1]
-        layerSize = self.layers[x]
-        for y in range(numberOfWeights):
-          self.weights[start + y] = numpy.random.uniform() * (2 / numpy.sqrt(layerSize)) - 1 / numpy.sqrt(layerSize)
-        start += numberOfWeights
-
       else:
         print("\nno weights file was found")
         start = 0
@@ -81,6 +67,15 @@ class Net():
           for y in range(numberOfWeights):
             self.weights[start + y] = numpy.random.uniform() * (2 / numpy.sqrt(layerSize)) - 1 / numpy.sqrt(layerSize)
           start += numberOfWeights
+
+    def initWeights(self):
+      start = 0
+      for x in range(len(self.layers)-1):
+        numberOfWeights = self.layers[x] * self.layers[x+1]
+        layerSize = self.layers[x]
+        for y in range(numberOfWeights):
+          self.weights[start + y] = numpy.random.uniform() * (2 / numpy.sqrt(layerSize)) - 1 / numpy.sqrt(layerSize)
+        start += numberOfWeights
 
     def free(self):
       self.weights_gpu.free()
