@@ -1,6 +1,6 @@
 #To be ran in Colab notebook, I don't own a GPU
 
-from CudaNet import Net
+#from CudaNet import Net
 
 testNet = Net()
 
