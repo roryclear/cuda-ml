@@ -150,7 +150,6 @@ class Net():
         lengthn2 = self.layers[numberOfLayers-1-y]
 
         lengthw1 = self.layers[numberOfLayers-3-y] * self.layers[numberOfLayers-2-y]
-        #print("lengthw1 =",lengthw1)
 
         length = lengthw1
         bx,by,gx,gy = self.getBlockAndGridSize(length,1)
@@ -193,7 +192,6 @@ class Net():
       startn0 = numpy.int32(0)
       startn1 = numpy.int32(self.layers[0])
       startw = numpy.int32(0)
-      start = numpy.int32(0)
       for x in range(len(self.layers)-1):
         
         if x > 0:
@@ -213,11 +211,10 @@ class Net():
                               startw, block=(bx,by,1), grid=(gx,gy))
 
         length = self.layers[x+1]
-        start += numpy.int32(self.layers[x])
 
         bx,by,gx,gy = self.getBlockAndGridSize(length,1)
 
-        sigmoid(self.nodes_gpu,start,numpy.int32(length),
+        sigmoid(self.nodes_gpu,startn1,numpy.int32(length),
                       block=(bx,by,1), grid=(gx,gy))
       return
 
