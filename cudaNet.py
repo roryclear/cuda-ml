@@ -88,7 +88,7 @@ class Net():
     def optimize(self):
       length = len(self.weights)
       bx,by,gx,gy = self.getBlockAndGridSize(length,1)
-      optimize(self.weights_gpu, self.grads_gpu,self.learningRate, numpy.int32(length), numpy.int32(batchSize), block=(bx,by,1),grid=(gx,gy))
+      optimize(self.weights_gpu, self.grads_gpu,self.learningRate, numpy.int32(length), block=(bx,by,1),grid=(gx,gy))
 
     def zero_grad(self):
       length = len(self.weights)
@@ -267,12 +267,12 @@ __global__ void multiply_them_3(float *d, float *a, float *b ,float *c, int star
   }
 }
 
-__global__ void optimize(float *d, float *a, float lr, int length, int batchSize)
+__global__ void optimize(float *d, float *a, float lr, int length)
 {
   int i = threadIdx.x + blockIdx.x * blockDim.x;
   if(i < length)
   {
-  d[i] = (lr * -a[i] / batchSize) + d[i];
+  d[i] = (lr * -a[i]) + d[i];
   }
 }
 
