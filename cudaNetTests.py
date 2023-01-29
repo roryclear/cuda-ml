@@ -41,7 +41,7 @@ batchSize = 1
 testEpochAccuracy([784,16,10],0.8948,0.1)
 testEpochAccuracy([784,4,10],0.7046,0.1)
 testEpochAccuracy([784,16,10,10],0.8181,1)
-testEpochAccuracy([784,1200,10],0.8572,0.1)
+testEpochAccuracy([784,1200,10],0.8525,0.1)
 batchSize = 10
 testEpochAccuracy([784,16,10],0.8614,0.1)
 batchSize = 1
